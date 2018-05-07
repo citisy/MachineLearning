@@ -1,0 +1,183 @@
+#-*- coding: utf-8 -*-
+
+# 编码注释：https://blog.csdn.net/cnki_ok/article/details/41719401
+
+import collections
+import numpy as np
+
+MAX_STRING = 100            # 一个word的最大长度
+EXP_TABLE_SIZE = 1000       # 对f的运算结果进行缓存，存储1000个，需要用的时候查表
+MAX_EXP = 6                 # 最大计算到6 (exp^6 / (exp^6 + 1))，最小计算到-6 (exp^-6 / (exp^-6 + 1))
+MAX_SENTENCE_LENGTH = 1000  # 定义最大的句子长度
+MAX_CODE_LENGTH = 40        #  定义最长的霍夫曼编码长度
+
+
+class Word2vec(object):
+    def __init__(self, train_file, window=5, min_reduce=1,
+                 layer1_size=100,alpha=0.025):
+        self.train_file = train_file
+        self.window = window
+        self.min_reduce = min_reduce
+        self.layer1_size = layer1_size
+        self.alpha = alpha
+        self.ReadWord()
+        self.SortVocab()
+        self.ReduceVocab()
+        self.CreateBinaryTree()
+        self.CBOW()
+        self.kmeans()
+        self.value()
+
+
+    # 读单词
+    def ReadWord(self):
+        self.word_list = []
+        for line in open(self.train_file, 'r', encoding='utf-8'):
+            self.word_list.append(line.replace('\n', ''))
+
+    # 按词频排序，制作字典
+    def SortVocab(self):
+        word_list = []
+        for line in self.word_list:
+            word_list.extend(line)
+        self.word_dict = collections.Counter(word_list)
+
+    # 低频词的处理
+    def ReduceVocab(self):
+        word_dict = self.word_dict.copy()
+        for k in self.word_dict.keys():
+            if self.word_dict[k] < self.min_reduce:
+               del word_dict[k]
+        self.word_dict = word_dict
+
+    # 建立哈夫曼树
+    def CreateBinaryTree(self):
+        # 字典从大到小排序，以便创建哈夫曼树
+        self.word_dict = sorted(self.word_dict.items(), key=lambda x: x[1], reverse=True)
+        self.word = []
+        self.cn = []
+        for (k, v) in self.word_dict:
+            self.word.append(k)
+            self.cn.append(v)
+        self.vocab_size = len(self.word)
+        # 哈夫曼树用数组形式表示，[:vocab_size]保存单词，[vocab_size:]保存父节点
+        # 从vocab_size开始查找，因为已经按词频排序，所以从中间相两边比较即可创建哈夫曼树
+        pos1 = self.vocab_size-1
+        pos2 = self.vocab_size
+        # 源码矩阵大小为2*vocab_size+1，存疑
+        count = [-1 for _ in range(2*self.vocab_size-1)] # 保存结点的值
+        count[:self.vocab_size] = self.cn
+        count[self.vocab_size:] = [1e15 for _ in range(self.vocab_size-1)]
+        parent_node = ['' for _ in range(2*self.vocab_size-2)] # 保存父节点的下标
+        binary = [0 for _ in range(2*self.vocab_size-1)] # 保存编码
+        # 哈夫曼树的总结点数为2*vocab_size-1
+        for a in range(self.vocab_size-1):
+            # 最小值和次最小值
+            if pos1 >= 0:
+                if count[pos1] < count[pos2]:
+                    min1 = pos1
+                    pos1 -= 1
+                else:
+                    min1 = pos2
+                    pos2 += 1
+            else:
+                min1 = pos2
+                pos2 += 1
+            if pos1 >= 0:
+                if count[pos1] < count[pos2]:
+                    min2 = pos1
+                    pos1 -= 1
+                else:
+                    min2 = pos2
+                    pos2 += 1
+            else:
+                min2 = pos2
+                pos2 += 1
+            # 从vocab_size开始依次保存父节点的值
+            count[self.vocab_size+a] = count[min1] + count[min2]
+            parent_node[min1] = self.vocab_size + a
+            parent_node[min2] = self.vocab_size + a
+            # 次最小值即右孩子赋1
+            binary[min2] = 1
+        # 哈夫曼编码
+        self.codelen = ['' for _ in range(self.vocab_size)] # 保存编码长度
+        self.code = [[] for _ in range(self.vocab_size)] # 保存哈夫曼编码
+        self.point = [[] for _ in range(self.vocab_size)] # 保存父节点
+        for a in range(self.vocab_size):
+            b = a
+            i = 0
+            while b < self.vocab_size*2-2:
+                self.code[a].append(binary[b])
+                self.point[a].append(b-self.vocab_size)
+                i += 1
+                b = parent_node[b]
+            self.codelen[a] = i
+            self.code[a] = self.code[a][::-1]
+            self.point[a] = self.point[a][::-1]
+
+    def CBOW(self):
+        # 随机初始化词向量，矩阵大小 => [vocab_size, layer1_size]
+        self.syn0 = np.random.random((self.vocab_size, self.layer1_size))
+        # 初始化权重矩阵
+        # 存疑，源码矩阵大小为[vocab_size, layer1_size]
+        self.syn1 =np.zeros((self.vocab_size, self.layer1_size))
+        # 词向量矩阵和
+        self.neu1 = np.zeros((self.layer1_size))
+        neu1e = np.zeros((self.layer1_size))
+        for i, word in enumerate(self.word):
+            # 对指定单词前后window个单词的权值进行更新，平均池化
+            for a in range(self.window*2+1):
+                c = i - self.window + a
+                if c < 0:
+                    continue
+                if c >= self.vocab_size:
+                    continue
+                for b in range(self.layer1_size):
+                    self.neu1[b] += self.syn0[c][b]/(self.window*2+1)
+            for d in range(self.codelen[i]):
+                f = 0
+                # 路径上的点的序号
+                l2 = self.point[i][d]
+                # 小于0为叶结点，即单词自身，不迭代
+                if l2 < 0:
+                    continue
+                # 计算f
+                for c in range(self.layer1_size):
+                    f += self.neu1[c] * self.syn1[l2][c]
+                # sigmoid function
+                f = 1.0 / (1.0 + np.exp(-f))
+                # 计算学习率
+                g = (1 - self.code[i][d] - f) * self.alpha
+                # 记录累积误差项
+                for c in range(self.layer1_size):
+                    neu1e[c] += g * self.syn1[l2][c]
+                # 更新非叶结点权重
+                for c in range(self.layer1_size):
+                    self.syn1[l2][c] += g * self.neu1[c]
+            # 更新词向量
+            for a in range(self.window*2+1):
+                c = i - self.window + a
+                if c < 0:
+                    continue
+                if c >= self.vocab_size:
+                    continue
+                for b in range(self.layer1_size):
+                    self.syn0[c][b] += neu1e[b]
+
+    def skip_gram(self):
+        pass
+
+    def kmeans(self):
+        pass
+
+    # 求每个词的模
+    def value(self):
+        self.word_value = {}
+        for i, k in enumerate(self.word):
+            self.word_value[k] = np.sqrt((self.syn0[i]**2).sum())
+
+
+if __name__ == '__main__':
+    filename = './data/Q.txt'
+    word2vec = Word2vec(filename)
+    print(word2vec.word_value['的'])
