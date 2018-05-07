@@ -4,6 +4,7 @@
 
 import collections
 import numpy as np
+import jieba
 
 MAX_STRING = 100            # 一个word的最大长度
 EXP_TABLE_SIZE = 1000       # 对f的运算结果进行缓存，存储1000个，需要用的时候查表
@@ -14,17 +15,28 @@ MAX_CODE_LENGTH = 40        #  定义最长的霍夫曼编码长度
 
 class Word2vec(object):
     def __init__(self, train_file, window=5, min_reduce=1,
-                 layer1_size=100,alpha=0.025):
+                 layer1_size=100, table_size=1e6, alpha=0.025, negative=5,
+                 model_mode=1, train_mode=1):
         self.train_file = train_file
         self.window = window
         self.min_reduce = min_reduce
         self.layer1_size = layer1_size
+        self.table_size = int(table_size)
         self.alpha = alpha
+        self.negative = negative
+        self.model_mode = model_mode
+        self.train_mode = train_mode
         self.ReadWord()
         self.SortVocab()
         self.ReduceVocab()
-        self.CreateBinaryTree()
-        self.CBOW()
+        if self.train_mode:
+            self.CreateBinaryTree()
+        else:
+            self.InitUnigramTable()
+        if self.model_mode:
+            self.CBOW()
+        else:
+            self.skip_gram()
         self.kmeans()
         self.value()
 
@@ -39,7 +51,7 @@ class Word2vec(object):
     def SortVocab(self):
         word_list = []
         for line in self.word_list:
-            word_list.extend(line)
+            word_list.extend(jieba.cut(line))
         self.word_dict = collections.Counter(word_list)
 
     # 低频词的处理
@@ -114,58 +126,183 @@ class Word2vec(object):
             self.codelen[a] = i
             self.code[a] = self.code[a][::-1]
             self.point[a] = self.point[a][::-1]
+        print('CreateBinaryTree successful!')
+
+    def InitUnigramTable(self):
+        self.word = []
+        self.cn = []
+        for (k, v) in self.word_dict.items():
+            self.word.append(k)
+            self.cn.append(v)
+        self.vocab_size = len(self.word)
+        power = 0.75
+        self.table = np.zeros(self.table_size, dtype=np.int64)
+        train_words_pow = 0
+        for a in range(self.vocab_size):
+            train_words_pow += np.power(self.cn[a], power)
+        i = 0  # 单词下标
+        d1 = np.power(self.cn[i], power)
+        for a in range(self.table_size):
+            self.table[a] = i
+            # 把table按词频划分，词频越高，占table的位置越多
+            if a/self.table_size > d1:
+                i += 1
+                d1 += np.power(self.cn[i], power)/train_words_pow
+            if i >= self.vocab_size:
+                i = self.vocab_size - 1
+        print('InitUnigramTable successful!')
+
 
     def CBOW(self):
         # 随机初始化词向量，矩阵大小 => [vocab_size, layer1_size]
         self.syn0 = np.random.random((self.vocab_size, self.layer1_size))
         # 初始化权重矩阵
         # 存疑，源码矩阵大小为[vocab_size, layer1_size]
+        self.syn1 = np.zeros((self.vocab_size, self.layer1_size))
+        # 词向量矩阵和
+        self.neu1 = np.zeros((self.layer1_size))
+        neu1e = np.zeros((self.layer1_size))
+        for i, word in enumerate(self.word):
+            print(i,word)
+            # in -> hidden
+            # 对指定单词前后window个单词的权值进行更新，平均池化
+            for a in range(self.window * 2 + 1):
+                l1 = i - self.window + a
+                if l1 < 0:
+                    continue
+                if l1 >= self.vocab_size:
+                    continue
+                for b in range(self.layer1_size):
+                    self.neu1[b] += self.syn0[l1][b] / (self.window * 2 + 1)
+            # 训练自身隐藏层结点权值、自身词向量更新系数
+            if self.train_mode:
+                for d in range(self.codelen[i]):
+                    f = 0
+                    # 路径上的点的序号
+                    l2 = self.point[i][d]
+                    # 小于0为叶结点，即单词自身，不迭代
+                    if l2 < 0:
+                        continue
+                    # 计算f
+                    for b in range(self.layer1_size):
+                        f += self.neu1[b] * self.syn1[l2][b]
+                    # sigmoid function
+                    f = 1.0 / (1.0 + np.exp(-f))
+                    # 计算学习率
+                    g = (1 - self.code[i][d] - f) * self.alpha
+                    # 记录累积误差项
+                    for b in range(self.layer1_size):
+                        neu1e[b] += g * self.syn1[l2][b]
+                    # 更新非叶结点权重
+                    for b in range(self.layer1_size):
+                        self.syn1[l2][b] += g * self.neu1[b]
+            else:
+                # 随机采个数最多为negative的负样本
+                for d in range(self.negative+1):
+                    # 第一个采样该单词，为正样本，其余采样为负样本
+                    if d == 0:
+                        l2 = i
+                        label = 1
+                    else:
+                        rand = np.random.randint(self.table_size)
+                        l2 = self.table[rand]
+                        # 若采样落在该单词占有的区域，则跳过
+                        # 词频越高，跳过几率越大，最终采到的样本越少
+                        if l2 == i:
+                            continue
+                        label = 0
+                    f = 0
+                    # 计算f
+                    for b in range(self.layer1_size):
+                        f += self.neu1[b] * self.syn1[l2][b]
+                    # sigmoid function
+                    f = 1.0 / (1.0 + np.exp(-f))
+                    # 计算学习率
+                    g = (label - f) * self.alpha
+                    # 记录累积误差项
+                    for b in range(self.layer1_size):
+                        neu1e[b] += g * self.syn1[l2][b]
+                    # 更新非叶结点权重
+                    for b in range(self.layer1_size):
+                        self.syn1[l2][b] += g * self.neu1[b]
+            # hidden -> in
+            # 更新词向量，把选中的训练好的词向量系数加到其他词的向量上
+            for a in range(self.window*2+1):
+                l1 = i - self.window + a
+                if l1 < 0:
+                    continue
+                if l1 >= self.vocab_size:
+                    continue
+                for b in range(self.layer1_size):
+                    self.syn0[l1][b] += neu1e[b]
+
+    def skip_gram(self):
+        # 随机初始化词向量，矩阵大小 => [vocab_size, layer1_size]
+        self.syn0 = np.random.random((self.vocab_size, self.layer1_size))
+        # 初始化权重矩阵
         self.syn1 =np.zeros((self.vocab_size, self.layer1_size))
         # 词向量矩阵和
         self.neu1 = np.zeros((self.layer1_size))
         neu1e = np.zeros((self.layer1_size))
         for i, word in enumerate(self.word):
-            # 对指定单词前后window个单词的权值进行更新，平均池化
-            for a in range(self.window*2+1):
-                c = i - self.window + a
-                if c < 0:
+            print(i,word)
+            for a in range(2*self.window+1):
+                l1 = i - self.window + a
+                if l1 < 0:
                     continue
-                if c >= self.vocab_size:
+                if l1 >= self.vocab_size:
                     continue
+                if self.train_mode:
+                    for d in range(self.codelen[i]):
+                        f = 0
+                        l2 = self.point[i][d]
+                        if l2 < 0:
+                            continue
+                        # hidden -> out
+                        for b in range(self.layer1_size):
+                            f += self.syn0[l1][b]*self.syn1[l2][b]
+                        # sigmoid function
+                        f = 1.0 / (1.0 + np.exp(-f))
+                        # 计算学习率
+                        g = (1 - self.code[i][d] - f) * self.alpha
+                        # 记录累积误差项
+                        for b in range(self.layer1_size):
+                            neu1e[b] += g * self.syn1[l2][b]
+                        # 更新非叶结点权重
+                        for b in range(self.layer1_size):
+                            self.syn1[l2][b] += g * self.syn0[l1][b]
+                else:
+                    for d in range(self.negative+1):
+                        # 第一个采样该单词，为正样本，其余采样为负样本
+                        if d == 0:
+                            l2 = i
+                            label = 1
+                        else:
+                            rand = np.random.randint(self.table_size)
+                            l2 = self.table[rand]
+                            # 若采样落在该单词占有的区域，则跳过
+                            # 词频越高，跳过几率越大，最终采到的样本越少
+                            if l2 == i:
+                                continue
+                            label = 0
+                        f = 0
+                        # hidden -> out
+                        for b in range(self.layer1_size):
+                            f += self.syn0[l1][b]*self.syn1[l2][b]
+                        # sigmoid function
+                        f = 1.0 / (1.0 + np.exp(-f))
+                        # 计算学习率
+                        g = (label - f) * self.alpha
+                        # 记录累积误差项
+                        for b in range(self.layer1_size):
+                            neu1e[b] += g * self.syn1[l2][b]
+                        # 更新非叶结点权重
+                        for b in range(self.layer1_size):
+                            self.syn1[l2][b] += g * self.syn0[l1][b]
+                # in -> hidden
+                # 把其他词训练好的误差向量加到选中词的向量上
                 for b in range(self.layer1_size):
-                    self.neu1[b] += self.syn0[c][b]/(self.window*2+1)
-            for d in range(self.codelen[i]):
-                f = 0
-                # 路径上的点的序号
-                l2 = self.point[i][d]
-                # 小于0为叶结点，即单词自身，不迭代
-                if l2 < 0:
-                    continue
-                # 计算f
-                for c in range(self.layer1_size):
-                    f += self.neu1[c] * self.syn1[l2][c]
-                # sigmoid function
-                f = 1.0 / (1.0 + np.exp(-f))
-                # 计算学习率
-                g = (1 - self.code[i][d] - f) * self.alpha
-                # 记录累积误差项
-                for c in range(self.layer1_size):
-                    neu1e[c] += g * self.syn1[l2][c]
-                # 更新非叶结点权重
-                for c in range(self.layer1_size):
-                    self.syn1[l2][c] += g * self.neu1[c]
-            # 更新词向量
-            for a in range(self.window*2+1):
-                c = i - self.window + a
-                if c < 0:
-                    continue
-                if c >= self.vocab_size:
-                    continue
-                for b in range(self.layer1_size):
-                    self.syn0[c][b] += neu1e[b]
-
-    def skip_gram(self):
-        pass
+                    self.syn0[l1][b] += neu1e[b]
 
     def kmeans(self):
         pass
@@ -179,5 +316,5 @@ class Word2vec(object):
 
 if __name__ == '__main__':
     filename = './data/Q.txt'
-    word2vec = Word2vec(filename)
+    word2vec = Word2vec(filename, model_mode=0, train_mode=0)
     print(word2vec.word_value['的'])
