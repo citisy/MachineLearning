@@ -5,18 +5,26 @@
 import collections
 import numpy as np
 import jieba
-
-MAX_STRING = 100            # 一个word的最大长度
-EXP_TABLE_SIZE = 1000       # 对f的运算结果进行缓存，存储1000个，需要用的时候查表
-MAX_EXP = 6                 # 最大计算到6 (exp^6 / (exp^6 + 1))，最小计算到-6 (exp^-6 / (exp^-6 + 1))
-MAX_SENTENCE_LENGTH = 1000  # 定义最大的句子长度
-MAX_CODE_LENGTH = 40        #  定义最长的霍夫曼编码长度
+import gensim
 
 
 class Word2vec(object):
     def __init__(self, train_file, window=5, min_reduce=1,
                  layer1_size=100, table_size=1e6, alpha=0.025, negative=5,
-                 model_mode=1, train_mode=1):
+                 model_mode=1, train_mode=1, classes=10, itera=5):
+        '''
+        :param train_file: 训练文件路径
+        :param window: n-gram的窗口值
+        :param min_reduce: 舍弃词频小于指定值的单词
+        :param layer1_size: hs的大小
+        :param table_size: neg的大小
+        :param alpha: 学习率
+        :param negative:
+        :param model_mode: 1 -> CBOW, 0 -> skip_gram
+        :param train_mode: 1 -> hs, 0 -> neg
+        :param classes: 聚类的簇的数量
+        :param itera: 迭代次数
+        '''
         self.train_file = train_file
         self.window = window
         self.min_reduce = min_reduce
@@ -26,6 +34,8 @@ class Word2vec(object):
         self.negative = negative
         self.model_mode = model_mode
         self.train_mode = train_mode
+        self.classes = classes
+        self.itera = itera
         self.ReadWord()
         self.SortVocab()
         self.ReduceVocab()
@@ -33,26 +43,33 @@ class Word2vec(object):
             self.CreateBinaryTree()
         else:
             self.InitUnigramTable()
-        if self.model_mode:
-            self.CBOW()
-        else:
-            self.skip_gram()
-        self.kmeans()
-        self.value()
+        # 随机初始化词向量，矩阵大小 => [vocab_size, layer1_size]
+        self.syn0 = np.random.random((self.vocab_size, self.layer1_size))
+        # 初始化权重矩阵
+        self.syn1 = np.zeros((self.vocab_size, self.layer1_size))
+        # 词向量矩阵和
+        self.neu1 = np.zeros((self.layer1_size))
+        for i in range(self.itera):
+            if self.model_mode:
+                self.CBOW()
+            else:
+                self.skip_gram()
+            print('第%d次迭代' % (i + 1))
 
 
     # 读单词
     def ReadWord(self):
-        self.word_list = []
+        self.sen = []
         for line in open(self.train_file, 'r', encoding='utf-8'):
-            self.word_list.append(line.replace('\n', ''))
+            self.sen.append(line.replace('\n', ''))
 
     # 按词频排序，制作字典
     def SortVocab(self):
-        word_list = []
-        for line in self.word_list:
-            word_list.extend(jieba.cut(line))
-        self.word_dict = collections.Counter(word_list)
+        self.word_list = []
+        for line in self.sen:
+            self.word_list.extend(jieba.cut(line))
+        del self.sen
+        self.word_dict = collections.Counter(self.word_list)
 
     # 低频词的处理
     def ReduceVocab(self):
@@ -152,21 +169,14 @@ class Word2vec(object):
                 i = self.vocab_size - 1
         print('InitUnigramTable successful!')
 
-
     def CBOW(self):
-        # 随机初始化词向量，矩阵大小 => [vocab_size, layer1_size]
-        self.syn0 = np.random.random((self.vocab_size, self.layer1_size))
-        # 初始化权重矩阵
-        # 存疑，源码矩阵大小为[vocab_size, layer1_size]
-        self.syn1 = np.zeros((self.vocab_size, self.layer1_size))
-        # 词向量矩阵和
-        self.neu1 = np.zeros((self.layer1_size))
-        neu1e = np.zeros((self.layer1_size))
         for i, word in enumerate(self.word):
-            print(i,word)
+            # print(i,word)
+            neu1e = np.zeros((self.layer1_size))
             # in -> hidden
             # 对指定单词前后window个单词的权值进行更新，平均池化
-            for a in range(self.window * 2 + 1):
+            b = np.random.randint(self.window)
+            for a in range(b, self.window * 2 + 1 + b):
                 l1 = i - self.window + a
                 if l1 < 0:
                     continue
@@ -237,16 +247,11 @@ class Word2vec(object):
                     self.syn0[l1][b] += neu1e[b]
 
     def skip_gram(self):
-        # 随机初始化词向量，矩阵大小 => [vocab_size, layer1_size]
-        self.syn0 = np.random.random((self.vocab_size, self.layer1_size))
-        # 初始化权重矩阵
-        self.syn1 =np.zeros((self.vocab_size, self.layer1_size))
-        # 词向量矩阵和
-        self.neu1 = np.zeros((self.layer1_size))
-        neu1e = np.zeros((self.layer1_size))
         for i, word in enumerate(self.word):
-            print(i,word)
-            for a in range(2*self.window+1):
+            # print(i,word)
+            neu1e = np.zeros((self.layer1_size))
+            b = np.random.randint(self.window)
+            for a in range(b, 2 * self.window + 1 + b):
                 l1 = i - self.window + a
                 if l1 < 0:
                     continue
@@ -303,18 +308,34 @@ class Word2vec(object):
                 # 把其他词训练好的误差向量加到选中词的向量上
                 for b in range(self.layer1_size):
                     self.syn0[l1][b] += neu1e[b]
+        del self.table
 
     def kmeans(self):
         pass
 
-    # 求每个词的模
-    def value(self):
-        self.word_value = {}
-        for i, k in enumerate(self.word):
-            self.word_value[k] = np.sqrt((self.syn0[i]**2).sum())
+    def most_similar(self, s, cn=10):
+        ind = self.word.index(s)
+        sim = []
+        for i in range(self.vocab_size):
+            sim.append(np.dot(self.syn0[ind], self.syn0[i]))
+        sim_ = sim.copy()
+        sim_.sort()
+        similar = []
+        for i in range(cn):
+            ind = sim.index(sim_[i])
+            similar.append(self.word[ind])
+        return similar
+
+    # 求词的模
+    def value(self, s):
+        ind = self.word.index(s)
+        return np.sqrt((self.syn0[ind]**2).sum())
 
 
 if __name__ == '__main__':
     filename = './data/Q.txt'
-    word2vec = Word2vec(filename, model_mode=0, train_mode=0)
-    print(word2vec.word_value['的'])
+    word2vec = Word2vec(filename, model_mode=1, train_mode=1)
+    print(word2vec.value('计算机'))
+    print(word2vec.most_similar('计算机', 10))
+    model = gensim.models.Word2Vec(word2vec.word_list,min_count=1,size=200,hs=1,sg=0)
+    print(model.most_similar('计算机'))
