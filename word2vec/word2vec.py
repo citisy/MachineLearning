@@ -1,6 +1,5 @@
 #-*- coding: utf-8 -*-
 
-# 编码注释：https://blog.csdn.net/cnki_ok/article/details/41719401
 
 import collections
 import numpy as np
@@ -67,8 +66,9 @@ class Word2vec(object):
     def SortVocab(self):
         self.word_list = []
         for line in self.sen:
-            self.word_list.extend(jieba.cut(line))
-        del self.sen
+            for word in jieba.cut(line):
+                if word.isalpha():
+                    self.word_list.append(word)
         self.word_dict = collections.Counter(self.word_list)
 
     # 低频词的处理
@@ -334,8 +334,9 @@ class Word2vec(object):
 
 if __name__ == '__main__':
     filename = './data/Q.txt'
-    word2vec = Word2vec(filename, model_mode=1, train_mode=1)
-    print(word2vec.value('计算机'))
-    print(word2vec.most_similar('计算机', 10))
-    model = gensim.models.Word2Vec(word2vec.word_list,min_count=1,size=200,hs=1,sg=0)
-    print(model.most_similar('计算机'))
+    word2vec = Word2vec(filename, model_mode=1, train_mode=1,itera=5)
+    # print(word2vec.value('计算机'))
+    print(word2vec.most_similar('笔记本', 10))
+    sen = [word2vec.word_list,[]]
+    model = gensim.models.Word2Vec(sen,min_count=1,size=200,hs=1,sg=0)
+    print(model.most_similar('笔记本'))
