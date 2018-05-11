@@ -246,6 +246,7 @@ class Word2vec(object):
                 for b in range(self.layer1_size):
                     self.syn0[l1][b] += neu1e[b]
 
+    # TODO 耗时长
     def skip_gram(self):
         for i, word in enumerate(self.word):
             # print(i,word)
@@ -296,7 +297,7 @@ class Word2vec(object):
                             f += self.syn0[l1][b]*self.syn1[l2][b]
                         # sigmoid function
                         f = 1.0 / (1.0 + np.exp(-f))
-                        # 计算学习率
+                        # 计算下降梯度
                         g = (label - f) * self.alpha
                         # 记录累积误差项
                         for b in range(self.layer1_size):
