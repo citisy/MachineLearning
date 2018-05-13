@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class cluster(object):
-    def __init__(self, data, k, itera=100, draw=0):
+    def __init__(self, data, k=3, itera=100, draw=0):
         self.data = np.array(data)
         self.k = k
         self.itera = itera

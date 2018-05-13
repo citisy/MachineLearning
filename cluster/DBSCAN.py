@@ -16,31 +16,90 @@ class DBSCAN(cluster):
     def __init__(self, data, draw=0, eps=0.01, threshold=3):
         self.eps = eps
         self.threshold = threshold
-        super(DBSCAN, self).__init__(data, draw)
+        super(DBSCAN, self).__init__(data, draw=draw)
 
-    # TODO 设置阈值
+    # 圈地运动，hhh
     def train(self):
-        data = self.data.copy()
-        self.cent_ind = np.array(range(self.col))
+        self.cent_ind = np.array(range(self.col), dtype=int)
+        self.cent_cn = np.zeros(self.col, dtype=int)
+        cent_ind = [[i] for i in range(self.col)]
+        r = np.zeros((self.col, self.col)) + 10
         for i in range(self.col):
-            for j in range(i, self.col):
-                r = self.get_r(data[i], data[j])
-                if r <= self.eps:
-                    # 距离最近的簇只保留一个
-                    ind = np.where(self.cent_ind == self.cent_ind[max(i, j)])
-                    self.cent_ind[ind] = self.cent_ind[min(i, j)]
-        self.show_()
+            for j in range(i+1, self.col):
+                r_ = self.get_r(self.data[i], self.data[j])
+                if r_ <= self.eps:
+                    self.cent_cn[i] += 1
+                    self.cent_cn[j] += 1
+                    cent_ind[i].append(j)
+                    r[i][j] = r_
+                    r[j][i] = r_
+        # core point
+        core_point = []
+        for i in range(self.col):
+            if self.cent_cn[i] >= self.threshold:
+                core_point.append(i)
+                if len(cent_ind[i]) == 1:
+                    continue
+                ind_x = np.where(self.cent_ind == self.cent_ind[cent_ind[i][0]])
+                for a in range(1, len(cent_ind[i])):
+                    if r[i][cent_ind[i][a]] == 0 or r[cent_ind[i][a]][i] == 0:
+                        continue
+                    ind_y = np.where(self.cent_ind == self.cent_ind[cent_ind[i][a]])
+                    # if ind_x is ind_y:
+                    #     continue
+                    ind = np.append(ind_x, ind_y)
+                    self.cent_ind[ind_y] = self.cent_ind[cent_ind[i][0]]
+                    # print(ind_x[0], ind_y[0], r[i][cent_ind[i][a]])
+                    # print(ind)
+                    # TODO 连通
+                    # for x in range(len(ind)-1):
+                    #     for y in range(x + 1, len(ind)):
+                    #         r[ind[x]][ind[y]] = 0
+                    #         r[ind[y]][ind[x]] = 0
+                    for x in ind_x[0]:
+                        for y in ind_y[0]:
+                            r[x][y] = 0
+                            r[y][x] = 0
+                    if self.draw:
+                        self.show_()
+
+
+        # border point
+        for i in range(self.col):
+            if self.cent_cn[i] > 0 and self.cent_cn[i] < self.threshold:
+                r_ = 10
+                j_ = i
+                # 没有归属点
+                if min(r[i]) != 0:
+                    # 查找最近的core point
+                    for j in core_point:
+                        r1 = self.get_r(self.data[i], self.data[j])
+                        if r1 < r_:
+                            r_ = r1
+                            j_ = j
+                self.cent_ind[i] = self.cent_ind[j_]
+                if self.draw:
+                    self.show_()
+        # noise point
+        for i in range(self.col):
+            if self.cent_cn[i] == 0:
+                self.cent_ind[i] = -1
+        if self.draw:
+            self.show_()
+        print('train completed!')
+        plt.show()
 
     def show_(self):
         plt.clf()
-        for i in range(self.row // 2):
-            ax = plt.subplot(1, self.row // 2, i + 1)
-            ax.scatter(self.data[:, i], self.data[:, i + 1], c=self.cent_ind)
-        plt.show()
+        for i in range(self.row//2):
+            ax = plt.subplot(1, self.row//2, i+1)
+            ax.scatter(self.data[:, i], self.data[:, i+1], c=self.cent_ind)
+        plt.draw()
+        plt.pause(0.0001)
 
 if __name__ == '__main__':
     from sklearn import datasets
     from sklearn.cluster import AgglomerativeClustering
-    X, y = datasets.make_moons(n_samples=500,noise=0.1)
-    model = DBSCAN(X, draw=1)
+    X, y = datasets.make_moons(n_samples=500,noise=0.08)
+    model = DBSCAN(X, draw=1, eps=0.005)
 
