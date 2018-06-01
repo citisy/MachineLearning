@@ -1,4 +1,4 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 '''
 　(1) 将每个对象看作一类，计算两两之间的最小距离；
@@ -53,9 +53,9 @@ class Hierarchical(cluster):
 if __name__ == '__main__':
     from sklearn import datasets
     from sklearn.cluster import AgglomerativeClustering
-    X, y = datasets.make_moons(n_samples=100,noise=0.05)
+    X, y = datasets.make_moons(n_samples=1000,noise=0.05)
     # X, y = datasets.make_blobs()
-    model = Hierarchical(X, 2, draw=1)
+    model = Hierarchical(X, 2, draw=0)
     # model = AgglomerativeClustering(n_clusters=2).fit(X)
 
 

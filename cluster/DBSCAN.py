@@ -1,4 +1,4 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 '''
 　(1) 设定扫描半径 Eps, 并规定扫描半径内的密度值。若当前点的半径范围内密度大于等于设定密度值，则设置当前点为核心点；若某点刚好在某核心点的半径边缘上，则设定此点为边界点；若某点既不是核心点又不是边界点，则此点为噪声点。
@@ -100,6 +100,6 @@ class DBSCAN(cluster):
 if __name__ == '__main__':
     from sklearn import datasets
     from sklearn.cluster import AgglomerativeClustering
-    X, y = datasets.make_moons(n_samples=500,noise=0.08)
-    model = DBSCAN(X, draw=1, eps=0.005)
+    X, y = datasets.make_moons(n_samples=1000,noise=0.08)
+    model = DBSCAN(X, draw=0, eps=0.005)
 
