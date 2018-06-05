@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 
 class SVM(object):
-    def __init__(self, data, label, c=0.6, tol=0, max_iter=10):
+    def __init__(self, data, label, c=1.0, tol=0.001, max_iter=10):
         '''
         :param data:
         :param c:对不在界内的惩罚因子
@@ -24,13 +24,20 @@ class SVM(object):
         self.max_iter = max_iter
         self.a = np.zeros(len(self.data))  # 拉格朗日乘子
         self.pre = np.zeros(len(self.data))
-        self.ecache = np.zeros(len(self.data), dtype=int)
+        self.ecache = np.zeros(len(self.data), dtype=int) - 1
         self.train()
 
     # 数据归一化
     def norm(self):
-        amax = self.data.max()
-        self.data /= amax
+        # amax = np.abs(self.data).max()
+        # self.data /= amax
+        for i in range(len(self.data[0])):
+            amax = np.abs(self.data[:, i]).max()
+            amin = np.abs(self.data[:, i]).min()
+            self.data[:, i] /= amax
+            # todo: amax不能取绝对值
+            # self.data[:, i] = 2 * (self.data[:, i] - amin) / (amax - amin) - 1
+        # print(self.data)
 
     def train(self):
         n = len(self.data)
@@ -38,25 +45,28 @@ class SVM(object):
         while itera < self.max_iter:
             a_change = 0  # a改变的次数
             for i in range(n):
-                ei = self.getE(i, i)
-                # 不满足kkt条件，确定需要更新的ai
+                ei = self.getE(i)
+                # 满足kkt -> 已经得到最优解，不需要进行操作
+                # 不满足kkt条件 -> 还没得到最优解，进行优化
                 if not self.is_kkt(ei, i):
                     # 确定aj
                     j, ej = self.getj(i, ei)
                     # 确定上下界
                     l, h = self.getLH(i, j)
+                    # l等于h时，a的值在l或h上
+                    # 即|aj-ai|=c
                     if l == h:
                         continue
                     # 确定eta
                     eta = self.getEta(i, j)
-                    #  如果eta等于0或者小于0 则表明a最优值应该在L或者H上
-                    if eta <= 0:
-                        continue
+                    # #  如果eta等于0或者小于0 则表明a最优值应该在L或者H上
+                    # if eta <= 0:
+                    #     continue
                     ai_old = self.a[i]
                     aj_old = self.a[j]
                     # 更新aj
                     self.a[j] += self.label[j] * (ei - ej) / eta
-                    if self.a[j] - aj_old < 1e-8:
+                    if np.abs(self.a[j] - aj_old) <= 1e-4:
                         continue
                     # 下界是L 也就是截距,小于L时为L
                     # 上界是H 也就是最大值,大于H时为H
@@ -80,12 +90,12 @@ class SVM(object):
             for i in range(len(self.data)):
                 self.pre[i] = self.predict(i)
             self.w = self.getW()
-            self.k = -self.w[1] / self.w[0]
             self.draw()
-            print(self.w)
+            # print(self.w)
             # print(self.label)
+        print(self.ecache)
         print("train complete!")
-        # plt.show()
+        plt.show()
 
     # 判断是否符合kkt条件
     def is_kkt(self, e, i):
@@ -108,17 +118,18 @@ class SVM(object):
             return False
         if self.label[i] * e > self.tol and self.a[i] > 0:
             return False
+        self.ecache[i] = -1
         return True
 
     def kernel(self, i, j):
         return np.dot(self.data[i], self.data[j])
 
-    def getE(self, ix, iy):
+    def getE(self, i):
         """
         Ei = ui - yi
         """
-        u = self.getu(ix)
-        return u - self.label[iy]
+        u = self.getu(i)
+        return u - self.label[i]
 
     # 目标值
     def getu(self, j):
@@ -128,12 +139,29 @@ class SVM(object):
         """
         w = self.getW()
         u = np.dot(w, self.data[j]) + self.b
+        # u = 0
+        # for i in range(len(self.data)):
+        #     u += self.a[i] * self.label[i] * self.kernel(i, j)
+        # u += self.b
         return u
 
     def getW(self):
+        """
+        w: 平面的法向量
+        二维为例：
+            w = [w1, w2]
+            x = [x1, x2]
+            平面(二维为直线)簇方程：g(x) = w * x + b -> w1x1 + w2x2 + b
+            中心直线方程：g(x) = 0
+        :return:
+        """
         w = 0
         for i in range(len(self.data)):
             w += self.a[i] * self.label[i] * self.data[i]
+        # for i in range(len(self.data)):
+        #     for j in range(len(self.data[i])):
+        #         w += self.a[i] * self.label[i] * self.data[i][j]
+        # w = np.matmul(np.reshape(self.a * self.label, [1, -1]), self.data)
         return w
 
     def getj(self, i, ei):
@@ -142,6 +170,7 @@ class SVM(object):
             对于上一次不满足kkt的点，下一次很大概率也不满足。
             故我们只需要遍历上一次不满足的点就可以了。
             在这些点中，|ej-ei|的值最大就是我们得到的j了
+            其实，ej是随机选取都是没有问题的
         return:
             [j, ej]
         """
@@ -151,9 +180,9 @@ class SVM(object):
         ej = 0
         flag = 0
         for a in self.ecache:
-            if a != 0 and a != i:
+            if a != -1 and a != i:
                 flag = 1
-                ea = self.getE(a, a)
+                ea = self.getE(a)
                 delta_e = np.abs(ea - ei)
                 if delta_e > max_e:
                     max_e = delta_e
@@ -164,7 +193,7 @@ class SVM(object):
             j = np.random.randint(len(self.data))
             while j == i:
                 j = np.random.randint(len(self.data))
-            ej = self.getE(j, j)
+            ej = self.getE(j)
         return j, ej
 
     def getLH(self, i, j):
@@ -192,30 +221,41 @@ class SVM(object):
             return b1
         if self.a[j] > 0 and self.a[j] < self.c:
             return b2
+        # 貌似到不了这一步，至少一定存在0<aj<c
         return (b1 + b2) / 2
 
     def predict(self, i):
         pre = self.getu(i)
         if pre < 0:
+            if pre > -1:
+                return -2
             return -1
         else:
+            if pre < 1:
+                return 2
             return 1
 
     def draw(self):
         plt.clf()
-        plt.scatter(self.x, self.y, c=self.pre)
+        ax = plt.gca()
+        ax.set_xlim([-1.2, 1.2])
+        ax.set_ylim([-1.2, 1.2])
+        ax.scatter(self.x, self.y, c=self.pre)
         x = [i / 10 for i in range(-10, 10)]
         y = []
         y1 = []
         y2 = []
         for i in x:
-            y_ = self.k * i + self.b
+            # 整合得y = -(w1*x+b)/w2
+            y_ = -(self.w[0] * i + self.b) / self.w[1]
             y.append(y_)
-            y1.append(y_ + 1)
-            y2.append((y_ - 1))
-        plt.plot(x, y)
-        plt.plot(x, y1)
-        plt.plot(x, y2)
+            y1_ = -(self.w[0] * i + self.b + 1) / self.w[1]
+            y1.append(y1_)
+            y2_ = -(self.w[0] * i + self.b - 1) / self.w[1]
+            y2.append(y2_)
+        ax.plot(x, y)
+        ax.plot(x, y1)
+        ax.plot(x, y2)
         plt.draw()
         plt.pause(0.01)
 
@@ -227,4 +267,4 @@ if __name__ == '__main__':
     for i in range(len(y)):
         if y[i] == 0:
             y[i] = -1
-    svm = SVM(x, y)
+    svm = SVM(x, y, c=0.5)
