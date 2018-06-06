@@ -1,7 +1,8 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 class cluster(object):
     def __init__(self, data, k=3, itera=100, draw=0):
@@ -9,11 +10,10 @@ class cluster(object):
         self.k = k
         self.itera = itera
         self.draw = draw
-        self.row = np.shape(self.data)[1]   # 数据维度
-        self.col = np.shape(self.data)[0]   # 数据数量
+        self.row = np.shape(self.data)[1]  # 数据维度
+        self.col = np.shape(self.data)[0]  # 数据数量
         self.init_cent()
         self.train()
-
 
     # 初始化中心点位置
     def init_cent(self):
@@ -25,7 +25,7 @@ class cluster(object):
             # self.data = (self.data-amin)/(amax-amin)
             self.data[:, i] /= amax
             # 随机生成中心点落在数据中
-            self.cent[:, i] = np.random.random(self.k)*(amax-amin)/amax + amin/amax
+            self.cent[:, i] = np.random.random(self.k) * (amax - amin) / amax + amin / amax
 
     def train(self):
         self.cent_ind = None
@@ -53,4 +53,4 @@ class cluster(object):
                 if self.cent_ind[j] == i:
                     cent_.append(self.data[j])
             wk += np.trace(np.cov(cent_, rowvar=False))
-        return bk*(self.col-self.k)/(wk*(self.k-1))
+        return bk * (self.col - self.k) / (wk * (self.k - 1))

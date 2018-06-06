@@ -1,16 +1,17 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
-'''
+"""
 　　(1) 任意选择k个对象作为初始的簇中心；
 　　(2) repeat；
 　　(3) 根据簇中对象的平均值，将每个对象(重新)赋予最类似的簇；
 　　(4) 更新簇的平均值，即计算每个簇中对象的平均值；
 　　(5) until不再发生变化。
-'''
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 from cluster import cluster
+
 
 class Kmeans(cluster):
     # 模型训练
@@ -51,15 +52,17 @@ class Kmeans(cluster):
     # 二维可视化
     def show_(self):
         plt.clf()
-        for i in range(self.row//2):
-            ax = plt.subplot(1, self.row//2, i+1)
-            ax.scatter(self.data[:, i], self.data[:, i+1], c=self.cent_ind)
-            ax.scatter(self.cent[:, i], self.cent[:, i+1], c='r')
+        for i in range(self.row // 2):
+            ax = plt.subplot(1, self.row // 2, i + 1)
+            ax.scatter(self.data[:, i], self.data[:, i + 1], c=self.cent_ind)
+            ax.scatter(self.cent[:, i], self.cent[:, i + 1], c='r')
         plt.draw()
         plt.pause(1)
 
+
 if __name__ == '__main__':
     from sklearn import datasets
+
     X, y = datasets.make_blobs()
     model = Kmeans(X, 3, draw=1)
     print(model.score())

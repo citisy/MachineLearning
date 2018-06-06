@@ -1,21 +1,22 @@
 import numpy as np
 
+
 class Functions(object):
     def __init__(self):
         self.sigmoid_table = None
 
     def tanh(self, x):
         # return np.tanh(x)
-        return (np.exp(x)-np.exp(-x))/(np.exp(x)+np.exp(-x))
+        return (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
 
     def tanh_(self, x):
-        return 1 - self.tanh(x)**2
+        return 1 - self.tanh(x) ** 2
 
     def sigmoid(self, x, k=1, x0=0):
-        return 1/(1+np.exp(-k*(x-x0)))
+        return 1 / (1 + np.exp(-k * (x - x0)))
 
     def sigmoid_(self, x):
-        return self.sigmoid(x) - self.sigmoid(x)**2
+        return self.sigmoid(x) - self.sigmoid(x) ** 2
 
     def relu(self, x):
         return max(0, x)
@@ -30,7 +31,7 @@ class Functions(object):
         y = []
         sum_exp = np.exp(x).sum()
         for i in x:
-            y.append(np.exp(i)/sum_exp)
+            y.append(np.exp(i) / sum_exp)
         return np.array(y)
 
     def softmax_(self, x, ind):
@@ -41,15 +42,15 @@ class Functions(object):
         # 缓存(maxs-mins)*100个数
         if self.sigmoid_table == None:
             self.sigmoid_table = []
-            for i in range(mins*100, maxs*100):
-                self.sigmoid_table.append(self.sigmoid(i/100))
+            for i in range(mins * 100, maxs * 100):
+                self.sigmoid_table.append(self.sigmoid(i / 100))
         # 查表输出
         if x <= -6:
             return -1
         elif x >= 6:
             return 1
         else:
-            return self.sigmoid_table[int(x*100)]
+            return self.sigmoid_table[int(x * 100)]
 
     def dropout(self, x, drop_pro):
         for i in range(len(x)):
@@ -60,16 +61,16 @@ class Functions(object):
     # 协方差矩阵
     def cov(self, x):
         # return np.cov(z, rowvar=False)
-        row = np.shape(x)[1]    # 样本维度
-        col = np.shape(x)[0]    # 样本数
+        row = np.shape(x)[1]  # 样本维度
+        col = np.shape(x)[0]  # 样本数
         covl = np.zeros((row, row))
         for i in range(row):
-            xi = x[:,i]
+            xi = x[:, i]
             ximean = np.mean(xi)
             for j in range(row):
-                xj = x[:,j]
+                xj = x[:, j]
                 xjmean = np.mean(xj)
-                covl[i,j] += np.dot((xi-ximean).T, (xj-xjmean))/(col-1)
+                covl[i, j] += np.dot((xi - ximean).T, (xj - xjmean)) / (col - 1)
         return covl
 
     # 矩阵的迹
@@ -84,13 +85,14 @@ class Functions(object):
 
     # 欧氏距离
     def dist(self, x, y):
-        return np.sqrt(((x-y)**2).sum())
+        return np.sqrt(((x - y) ** 2).sum())
 
     # 余弦相似度
     def cos_sim(self, x, y):
-        return np.dot(x, y)/np.sqrt((x**2).sum()*(y**2).sum())
+        return np.dot(x, y) / np.sqrt((x ** 2).sum() * (y ** 2).sum())
+
 
 if __name__ == '__main__':
     f = Functions()
-    z = np.array([[1,2,3,4],[3,4,1,2],[2,3,1,4]])
-    print(f.dist(z[:,0],z[:,1]))
+    z = np.array([[1, 2, 3, 4], [3, 4, 1, 2], [2, 3, 1, 4]])
+    print(f.dist(z[:, 0], z[:, 1]))

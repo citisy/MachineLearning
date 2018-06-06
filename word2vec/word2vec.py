@@ -1,4 +1,4 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 
 import collections
@@ -11,7 +11,7 @@ class Word2vec(object):
     def __init__(self, train_file, window=5, min_reduce=1,
                  layer1_size=100, table_size=1e6, alpha=0.025, negative=5,
                  model_mode=1, train_mode=1, classes=10, itera=5):
-        '''
+        """
         :param train_file: 训练文件路径
         :param window: n-gram的窗口值
         :param min_reduce: 舍弃词频小于指定值的单词
@@ -23,7 +23,7 @@ class Word2vec(object):
         :param train_mode: 1 -> hs, 0 -> neg
         :param classes: 聚类的簇的数量
         :param itera: 迭代次数
-        '''
+        """
         self.train_file = train_file
         self.window = window
         self.min_reduce = min_reduce
@@ -55,7 +55,6 @@ class Word2vec(object):
                 self.skip_gram()
             print('第%d次迭代' % (i + 1))
 
-
     # 读单词
     def ReadWord(self):
         self.sen = []
@@ -76,7 +75,7 @@ class Word2vec(object):
         word_dict = self.word_dict.copy()
         for k in self.word_dict.keys():
             if self.word_dict[k] < self.min_reduce:
-               del word_dict[k]
+                del word_dict[k]
         self.word_dict = word_dict
 
     # 建立哈夫曼树
@@ -91,16 +90,16 @@ class Word2vec(object):
         self.vocab_size = len(self.word)
         # 哈夫曼树用数组形式表示，[:vocab_size]保存单词，[vocab_size:]保存父节点
         # 从vocab_size开始查找，因为已经按词频排序，所以从中间相两边比较即可创建哈夫曼树
-        pos1 = self.vocab_size-1
+        pos1 = self.vocab_size - 1
         pos2 = self.vocab_size
         # 源码矩阵大小为2*vocab_size+1，存疑
-        count = [-1 for _ in range(2*self.vocab_size-1)] # 保存结点的值
+        count = [-1 for _ in range(2 * self.vocab_size - 1)]  # 保存结点的值
         count[:self.vocab_size] = self.cn
-        count[self.vocab_size:] = [1e15 for _ in range(self.vocab_size-1)]
-        parent_node = ['' for _ in range(2*self.vocab_size-2)] # 保存父节点的下标
-        binary = [0 for _ in range(2*self.vocab_size-1)] # 保存编码
+        count[self.vocab_size:] = [1e15 for _ in range(self.vocab_size - 1)]
+        parent_node = ['' for _ in range(2 * self.vocab_size - 2)]  # 保存父节点的下标
+        binary = [0 for _ in range(2 * self.vocab_size - 1)]  # 保存编码
         # 哈夫曼树的总结点数为2*vocab_size-1
-        for a in range(self.vocab_size-1):
+        for a in range(self.vocab_size - 1):
             # 最小值和次最小值
             if pos1 >= 0:
                 if count[pos1] < count[pos2]:
@@ -123,21 +122,21 @@ class Word2vec(object):
                 min2 = pos2
                 pos2 += 1
             # 从vocab_size开始依次保存父节点的值
-            count[self.vocab_size+a] = count[min1] + count[min2]
+            count[self.vocab_size + a] = count[min1] + count[min2]
             parent_node[min1] = self.vocab_size + a
             parent_node[min2] = self.vocab_size + a
             # 次最小值即右孩子赋1
             binary[min2] = 1
         # 哈夫曼编码
-        self.codelen = ['' for _ in range(self.vocab_size)] # 保存编码长度
-        self.code = [[] for _ in range(self.vocab_size)] # 保存哈夫曼编码
-        self.point = [[] for _ in range(self.vocab_size)] # 保存父节点
+        self.codelen = ['' for _ in range(self.vocab_size)]  # 保存编码长度
+        self.code = [[] for _ in range(self.vocab_size)]  # 保存哈夫曼编码
+        self.point = [[] for _ in range(self.vocab_size)]  # 保存父节点
         for a in range(self.vocab_size):
             b = a
             i = 0
-            while b < self.vocab_size*2-2:
+            while b < self.vocab_size * 2 - 2:
                 self.code[a].append(binary[b])
-                self.point[a].append(b-self.vocab_size)
+                self.point[a].append(b - self.vocab_size)
                 i += 1
                 b = parent_node[b]
             self.codelen[a] = i
@@ -162,9 +161,9 @@ class Word2vec(object):
         for a in range(self.table_size):
             self.table[a] = i
             # 把table按词频划分，词频越高，占table的位置越多
-            if a/self.table_size > d1:
+            if a / self.table_size > d1:
                 i += 1
-                d1 += np.power(self.cn[i], power)/train_words_pow
+                d1 += np.power(self.cn[i], power) / train_words_pow
             if i >= self.vocab_size:
                 i = self.vocab_size - 1
         print('InitUnigramTable successful!')
@@ -208,7 +207,7 @@ class Word2vec(object):
                         self.syn1[l2][b] += g * self.neu1[b]
             else:
                 # 随机采个数最多为negative的负样本
-                for d in range(self.negative+1):
+                for d in range(self.negative + 1):
                     # 第一个采样该单词，为正样本，其余采样为负样本
                     if d == 0:
                         l2 = i
@@ -237,7 +236,7 @@ class Word2vec(object):
                         self.syn1[l2][b] += g * self.neu1[b]
             # hidden -> in
             # 更新词向量，把选中的训练好的词向量系数加到其他词的向量上
-            for a in range(self.window*2+1):
+            for a in range(self.window * 2 + 1):
                 l1 = i - self.window + a
                 if l1 < 0:
                     continue
@@ -266,7 +265,7 @@ class Word2vec(object):
                             continue
                         # hidden -> out
                         for b in range(self.layer1_size):
-                            f += self.syn0[l1][b]*self.syn1[l2][b]
+                            f += self.syn0[l1][b] * self.syn1[l2][b]
                         # sigmoid function
                         f = 1.0 / (1.0 + np.exp(-f))
                         # 计算学习率
@@ -278,7 +277,7 @@ class Word2vec(object):
                         for b in range(self.layer1_size):
                             self.syn1[l2][b] += g * self.syn0[l1][b]
                 else:
-                    for d in range(self.negative+1):
+                    for d in range(self.negative + 1):
                         # 第一个采样该单词，为正样本，其余采样为负样本
                         if d == 0:
                             l2 = i
@@ -294,7 +293,7 @@ class Word2vec(object):
                         f = 0
                         # hidden -> out
                         for b in range(self.layer1_size):
-                            f += self.syn0[l1][b]*self.syn1[l2][b]
+                            f += self.syn0[l1][b] * self.syn1[l2][b]
                         # sigmoid function
                         f = 1.0 / (1.0 + np.exp(-f))
                         # 计算下降梯度
@@ -330,14 +329,14 @@ class Word2vec(object):
     # 求词的模
     def value(self, s):
         ind = self.word.index(s)
-        return np.sqrt((self.syn0[ind]**2).sum())
+        return np.sqrt((self.syn0[ind] ** 2).sum())
 
 
 if __name__ == '__main__':
     filename = './data/Q.txt'
-    word2vec = Word2vec(filename, model_mode=1, train_mode=1,itera=5)
+    word2vec = Word2vec(filename, model_mode=1, train_mode=1, itera=5)
     # print(word2vec.value('计算机'))
     print(word2vec.most_similar('笔记本', 10))
-    sen = [word2vec.word_list,[]]
-    model = gensim.models.Word2Vec(sen,min_count=1,size=200,hs=1,sg=0)
+    sen = [word2vec.word_list, []]
+    model = gensim.models.Word2Vec(sen, min_count=1, size=200, hs=1, sg=0)
     print(model.most_similar('笔记本'))
