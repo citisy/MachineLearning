@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 
 
 class SVM(object):
-    def __init__(self, data, label, c=1.0, tol=0.001, max_iter=10):
-        '''
+    def __init__(self, data, label, c=1.0, tol=1e-3, max_iter=10):
+        """
         :param data:
         :param c:对不在界内的惩罚因子
         :param tol:容忍极限值
         :param itera:最大迭代次数
-        '''
+        """
         self.data = data
         self.norm()
         self.label = label  # 数据标签，分为-1和+1
@@ -29,15 +29,12 @@ class SVM(object):
 
     # 数据归一化
     def norm(self):
-        # amax = np.abs(self.data).max()
-        # self.data /= amax
         for i in range(len(self.data[0])):
             amax = np.abs(self.data[:, i]).max()
             amin = np.abs(self.data[:, i]).min()
             self.data[:, i] /= amax
             # todo: amax不能取绝对值
             # self.data[:, i] = 2 * (self.data[:, i] - amin) / (amax - amin) - 1
-        # print(self.data)
 
     def train(self):
         n = len(self.data)
@@ -60,8 +57,6 @@ class SVM(object):
                     # 确定eta
                     eta = self.getEta(i, j)
                     # #  如果eta等于0或者小于0 则表明a最优值应该在L或者H上
-                    # if eta <= 0:
-                    #     continue
                     ai_old = self.a[i]
                     aj_old = self.a[j]
                     # 更新aj
@@ -91,11 +86,7 @@ class SVM(object):
                 self.pre[i] = self.predict(i)
             self.w = self.getW()
             self.draw()
-            # print(self.w)
-            # print(self.label)
-        print(self.ecache)
         print("train complete!")
-        plt.show()
 
     # 判断是否符合kkt条件
     def is_kkt(self, e, i):
@@ -139,10 +130,6 @@ class SVM(object):
         """
         w = self.getW()
         u = np.dot(w, self.data[j]) + self.b
-        # u = 0
-        # for i in range(len(self.data)):
-        #     u += self.a[i] * self.label[i] * self.kernel(i, j)
-        # u += self.b
         return u
 
     def getW(self):
@@ -158,10 +145,6 @@ class SVM(object):
         w = 0
         for i in range(len(self.data)):
             w += self.a[i] * self.label[i] * self.data[i]
-        # for i in range(len(self.data)):
-        #     for j in range(len(self.data[i])):
-        #         w += self.a[i] * self.label[i] * self.data[i][j]
-        # w = np.matmul(np.reshape(self.a * self.label, [1, -1]), self.data)
         return w
 
     def getj(self, i, ei):
@@ -217,9 +200,9 @@ class SVM(object):
              - self.label[j] * (self.a[j] - aj_old) * self.kernel(i, j)
         b2 = self.b - ej - self.label[i] * (self.a[i] - ai_old) * self.kernel(i, j) \
              - self.label[j] * (self.a[j] - aj_old) * self.kernel(j, j)
-        if self.a[i] > 0 and self.a[i] < self.c:
+        if 0 < self.a[i] < self.c:
             return b1
-        if self.a[j] > 0 and self.a[j] < self.c:
+        if 0 < self.a[j] < self.c:
             return b2
         # 貌似到不了这一步，至少一定存在0<aj<c
         return (b1 + b2) / 2
@@ -227,11 +210,13 @@ class SVM(object):
     def predict(self, i):
         pre = self.getu(i)
         if pre < 0:
-            if pre > -1:
+            # if pre > -1:
+            if self.a[i] != 0:
                 return -2
             return -1
         else:
-            if pre < 1:
+            # if pre < 1:
+            if self.a[i] != 0:
                 return 2
             return 1
 
@@ -241,18 +226,11 @@ class SVM(object):
         ax.set_xlim([-1.2, 1.2])
         ax.set_ylim([-1.2, 1.2])
         ax.scatter(self.x, self.y, c=self.pre)
-        x = [i / 10 for i in range(-10, 10)]
-        y = []
-        y1 = []
-        y2 = []
-        for i in x:
-            # 整合得y = -(w1*x+b)/w2
-            y_ = -(self.w[0] * i + self.b) / self.w[1]
-            y.append(y_)
-            y1_ = -(self.w[0] * i + self.b + 1) / self.w[1]
-            y1.append(y1_)
-            y2_ = -(self.w[0] * i + self.b - 1) / self.w[1]
-            y2.append(y2_)
+        x = np.linspace(-1,1)
+        # 整合得y = -(w1*x+b)/w2
+        y = -(self.w[0] * x + self.b) / self.w[1]
+        y1 = -(self.w[0] * x + self.b + 1) / self.w[1]
+        y2 = -(self.w[0] * x + self.b - 1) / self.w[1]
         ax.plot(x, y)
         ax.plot(x, y1)
         ax.plot(x, y2)
@@ -260,11 +238,36 @@ class SVM(object):
         plt.pause(0.01)
 
 
+def sklearn_pre(x, y):
+    clf = svm.SVC(kernel='linear')
+    clf.fit(x, y)
+    w = clf.coef_[0]
+    k = -w[0] / w[1]
+    b = clf.intercept_[0]
+    pre = clf.support_
+    y[pre] = 0
+    xx = np.linspace(-1, 1)
+    yy = k * xx - b / w[1]
+    yy1 = k * xx - (b+1) / w[1]
+    yy2 = k * xx - (b-1) / w[1]
+    plt.figure()
+    ax = plt.gca()
+    ax.set_xlim([-1.2, 1.2])
+    ax.set_ylim([-1.2, 1.2])
+    ax.scatter(x[:, 0], x[:, 1], c=y)
+    ax.plot(xx, yy)
+    ax.plot(xx, yy1)
+    ax.plot(xx, yy2)
+    plt.show()
+
+
 if __name__ == '__main__':
     from sklearn import datasets
+    from sklearn import svm
 
     x, y = datasets.make_blobs(centers=2)
     for i in range(len(y)):
         if y[i] == 0:
             y[i] = -1
-    svm = SVM(x, y, c=0.5)
+    model = SVM(x, y, c=0.5)
+    sklearn_pre(model.data, y)
