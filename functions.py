@@ -91,8 +91,22 @@ class Functions(object):
     def cos_sim(self, x, y):
         return np.dot(x, y) / np.sqrt((x ** 2).sum() * (y ** 2).sum())
 
+    def make_blobs(self, n_centers=2, mean=None, cov=None, n_sample=None):
+        mean = mean or [[2, 3], [7, 8]]
+        cov = cov or [[[1, 0], [0, 2]],
+                      [[1, 0], [0, 2]]]
+        n_sample = n_sample or [500, 500]
+        x = []
+        y = []
+        for i in range(n_centers):
+            x.append(np.random.multivariate_normal(mean[i], cov[i], n_sample[i]))
+            y.extend([i] * n_sample[i])
+        return x, np.array(y)
+
 
 if __name__ == '__main__':
     f = Functions()
-    z = np.array([[1, 2, 3, 4], [3, 4, 1, 2], [2, 3, 1, 4]])
-    print(f.dist(z[:, 0], z[:, 1]))
+    # z = np.array([[1, 2, 3, 4], [3, 4, 1, 2], [2, 3, 1, 4]])
+    # print(f.dist(z[:, 0], z[:, 1]))
+    x, y = f.make_blobs()
+    print(y)

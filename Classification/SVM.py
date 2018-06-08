@@ -226,7 +226,7 @@ class SVM(object):
         ax.set_xlim([-1.2, 1.2])
         ax.set_ylim([-1.2, 1.2])
         ax.scatter(self.x, self.y, c=self.pre)
-        x = np.linspace(-1,1)
+        x = np.linspace(-1, 1)
         # 整合得y = -(w1*x+b)/w2
         y = -(self.w[0] * x + self.b) / self.w[1]
         y1 = -(self.w[0] * x + self.b + 1) / self.w[1]
@@ -248,8 +248,8 @@ def sklearn_pre(x, y):
     y[pre] = 0
     xx = np.linspace(-1, 1)
     yy = k * xx - b / w[1]
-    yy1 = k * xx - (b+1) / w[1]
-    yy2 = k * xx - (b-1) / w[1]
+    yy1 = k * xx - (b + 1) / w[1]
+    yy2 = k * xx - (b - 1) / w[1]
     plt.figure()
     ax = plt.gca()
     ax.set_xlim([-1.2, 1.2])
