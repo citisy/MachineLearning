@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import collections
+from matplotlib.colors import ListedColormap
 
 
 class NB(object):
@@ -132,10 +133,9 @@ class NB(object):
         ax = plt.gca()
         fig = plt.figure()
         ax2 = Axes3D(fig)
-        ax.scatter(self.data[:, 0], self.data[:, 1], c=self.label)
         for k in self.dict_.keys():
-            x = np.arange(self.dict_[k]['mu'][0] - 5, self.dict_[k]['mu'][0] + 5, 0.1)
-            y = np.arange(self.dict_[k]['mu'][1] - 5, self.dict_[k]['mu'][1] + 5, 0.1)
+            x = np.arange(self.dict_[k]['mu'][0] - 2, self.dict_[k]['mu'][0] + 2, 0.1)
+            y = np.arange(self.dict_[k]['mu'][1] - 2, self.dict_[k]['mu'][1] + 2, 0.1)
             x, y = np.meshgrid(x, y)
             d = np.linalg.det(self.dict_[k]['sigma'])
             z = np.exp(
@@ -147,16 +147,20 @@ class NB(object):
             cs = ax.contour(x, y, z)
             ax.clabel(cs, inline=1, fontsize=10)
             ax2.plot_surface(x, y, z, rstride=1, cstride=1, cmap='rainbow')
+        x_min, x_max = self.data[:, 0].min() - 1, self.data[:, 0].max() + 1
+        y_min, y_max = self.data[:, 1].min() - 1, self.data[:, 1].max() + 1
+        x = np.arange(x_min, x_max, 0.1)
+        y = np.arange(y_min, y_max, 0.1)
+        x, y = np.meshgrid(x, y)
+        z = self.gaussian_predict(np.c_[x.ravel(), y.ravel()])
+        z = z.reshape(x.shape)
+        # todo: 分界面呈弧形
+        cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF'])
+        ax.pcolormesh(x, y, z, cmap=cmap_light)
+        ax.scatter(self.data[:, 0], self.data[:, 1], c=self.label)
         ax2.set_xlabel('x')
         ax2.set_ylabel('y')
         ax2.set_zlabel('z')
-        # todo: 以两个中心点坐标的均值划分分界线是不准确的，还得考虑方差的情况
-        # todo：当数据的中心数大于2时，要怎样可是化
-        # k = (self.dict_[1]['mu'][1] - self.dict_[0]['mu'][1]) / (self.dict_[1]['mu'][0] - self.dict_[0]['mu'][0])
-        # mid = [(self.dict_[1]['mu'][0] + self.dict_[0]['mu'][0]) / 2, (self.dict_[1]['mu'][1] + self.dict_[0]['mu'][1]) / 2]
-        # x = np.linspace(self.data[:, 0].min()-1, self.data[:, 0].max()+1)
-        # y = -(x - mid[0]) / k + mid[1]
-        # ax.plot(x, y)
         plt.show()
 
 
@@ -165,19 +169,20 @@ if __name__ == '__main__':
 
     # 高斯预测
     from sklearn.naive_bayes import GaussianNB
-    # data = datasets.load_iris()
-    # x = data.data
-    # y = data.target
-    # x, y = datasets.make_blobs(centers=2)
-    # model = NB(x, y)
-    # pre = model.gaussian_predict(x)
-    # for i in range(len(x)):
-    #     print(pre[i], y[i])
-    # model.show()
-    # m = GaussianNB().fit(x,y)
-    # pre = m.predict(x)
-    # for i in range(len(x)):
-    #     print(pre[i], y[i])
+
+    data = datasets.load_iris()
+    x = data.data
+    y = data.target
+    x, y = datasets.make_blobs(centers=3)
+    model = NB(x, y)
+    pre = model.gaussian_predict(x)
+    for i in range(len(x)):
+        print(pre[i], y[i])
+    model.show()
+    m = GaussianNB().fit(x, y)
+    pre = m.predict(x)
+    for i in range(len(x)):
+        print(pre[i], y[i])
 
     # # 多项式预测
     # from sklearn.naive_bayes import MultinomialNB
@@ -191,14 +196,14 @@ if __name__ == '__main__':
     # clf = MultinomialNB().fit(x, y)
     # print(clf.predict(x))
 
-    # # 伯努利判别
-    from sklearn.naive_bayes import BernoulliNB
-
-    x = np.random.randint(2, size=(6, 100))
-    y = np.array([1, 2, 3, 4, 5, 6])
-    clf = BernoulliNB().fit(x, y)
-    print(clf.predict(x))
-    model = NB(x, y)
-    pre = model.bernoulli_predict(x)
-    for i in range(6):
-        print(pre[i], y[i])
+    # # # 伯努利判别
+    # from sklearn.naive_bayes import BernoulliNB
+    #
+    # x = np.random.randint(2, size=(6, 100))
+    # y = np.array([1, 2, 3, 4, 5, 6])
+    # clf = BernoulliNB().fit(x, y)
+    # print(clf.predict(x))
+    # model = NB(x, y)
+    # pre = model.bernoulli_predict(x)
+    # for i in range(6):
+    #     print(pre[i], y[i])
