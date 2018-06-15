@@ -14,22 +14,20 @@ from cluster import cluster
 
 class Hierarchical(cluster):
     def train(self):
-        self.cent_ind = np.array(range(self.col), dtype=int)
-        r = np.zeros((self.col, self.col))
+        r = np.zeros((self.n_samples, self.n_samples))
         # 两点距离最大为根号2，设为10可视为忽略的点
         r += 10
-        for i in range(self.col):
-            for j in range(i + 1, self.col):
+        for i in range(self.n_samples):
+            for j in range(i + 1, self.n_samples):
                 r[i][j] = self.get_r(self.data[i], self.data[j])
-        for _ in range(self.col - self.k):
+        for _ in range(self.n_samples - self.k):
             min_ind = np.argmin(r)
-            j = min_ind % self.col
-            i = min_ind // self.col
+            j = min_ind % self.n_samples
+            i = min_ind // self.n_samples
             # 距离最近的簇只保留一个
             ind_j = np.where(self.cent_ind == self.cent_ind[j])
             ind_i = np.where(self.cent_ind == self.cent_ind[i])
             self.cent_ind[ind_j] = self.cent_ind[i]
-            ind = np.append(ind_j, ind_i)
             # 簇内成员距离都为10
             for i in ind_i[0]:
                 for j in ind_j[0]:
@@ -42,8 +40,8 @@ class Hierarchical(cluster):
     # 二维可视化
     def show_(self):
         plt.clf()
-        for i in range(self.row // 2):
-            ax = plt.subplot(1, self.row // 2, i + 1)
+        for i in range(self.n_features // 2):
+            ax = plt.subplot(1, self.n_features // 2, i + 1)
             ax.scatter(self.data[:, i], self.data[:, i + 1], c=self.cent_ind)
         plt.draw()
         plt.pause(0.001)
@@ -55,5 +53,5 @@ if __name__ == '__main__':
 
     X, y = datasets.make_moons(n_samples=1000, noise=0.05)
     # X, y = datasets.make_blobs()
-    model = Hierarchical(X, 2, draw=0)
+    model = Hierarchical(X, 2, draw=1)
     # model = AgglomerativeClustering(n_clusters=2).fit(X)

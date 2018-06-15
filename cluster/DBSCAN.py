@@ -21,12 +21,11 @@ class DBSCAN(cluster):
 
     # 圈地运动，hhh
     def train(self):
-        self.cent_ind = np.array(range(self.col), dtype=int)
-        self.cent_cn = np.zeros(self.col, dtype=int)
-        cent_ind = [[i] for i in range(self.col)]
-        r = np.zeros((self.col, self.col)) + 10
-        for i in range(self.col):
-            for j in range(i + 1, self.col):
+        self.cent_cn = np.zeros(self.n_samples, dtype=int)
+        cent_ind = [[i] for i in range(self.n_samples)]
+        r = np.zeros((self.n_samples, self.n_samples)) + 10
+        for i in range(self.n_samples):
+            for j in range(i + 1, self.n_samples):
                 r_ = self.get_r(self.data[i], self.data[j])
                 if r_ <= self.eps:
                     self.cent_cn[i] += 1
@@ -36,7 +35,7 @@ class DBSCAN(cluster):
                     r[j][i] = r_
         # core point
         core_point = []
-        for i in range(self.col):
+        for i in range(self.n_samples):
             if self.cent_cn[i] >= self.threshold:
                 core_point.append(i)
                 if len(cent_ind[i]) == 1:
@@ -46,26 +45,15 @@ class DBSCAN(cluster):
                     if r[i][cent_ind[i][a]] == 0 or r[cent_ind[i][a]][i] == 0:
                         continue
                     ind_y = np.where(self.cent_ind == self.cent_ind[cent_ind[i][a]])
-                    # if ind_x is ind_y:
-                    #     continue
-                    ind = np.append(ind_x, ind_y)
                     self.cent_ind[ind_y] = self.cent_ind[cent_ind[i][0]]
-                    # print(ind_x[0], ind_y[0], r[i][cent_ind[i][a]])
-                    # print(ind)
-                    # TODO 连通
-                    # for x in range(len(ind)-1):
-                    #     for y in range(x + 1, len(ind)):
-                    #         r[ind[x]][ind[y]] = 0
-                    #         r[ind[y]][ind[x]] = 0
                     for x in ind_x[0]:
                         for y in ind_y[0]:
                             r[x][y] = 0
                             r[y][x] = 0
                     if self.draw:
                         self.show_()
-
         # border point
-        for i in range(self.col):
+        for i in range(self.n_samples):
             if self.cent_cn[i] > 0 and self.cent_cn[i] < self.threshold:
                 r_ = 10
                 j_ = i
@@ -81,7 +69,7 @@ class DBSCAN(cluster):
                 if self.draw:
                     self.show_()
         # noise point
-        for i in range(self.col):
+        for i in range(self.n_samples):
             if self.cent_cn[i] == 0:
                 self.cent_ind[i] = -1
         if self.draw:
@@ -91,8 +79,8 @@ class DBSCAN(cluster):
 
     def show_(self):
         plt.clf()
-        for i in range(self.row // 2):
-            ax = plt.subplot(1, self.row // 2, i + 1)
+        for i in range(self.n_features // 2):
+            ax = plt.subplot(1, self.n_features // 2, i + 1)
             ax.scatter(self.data[:, i], self.data[:, i + 1], c=self.cent_ind)
         plt.draw()
         plt.pause(0.0001)
@@ -103,4 +91,4 @@ if __name__ == '__main__':
     from sklearn.cluster import AgglomerativeClustering
 
     X, y = datasets.make_moons(n_samples=1000, noise=0.08)
-    model = DBSCAN(X, draw=0, eps=0.005)
+    model = DBSCAN(X, draw=1, eps=0.005)

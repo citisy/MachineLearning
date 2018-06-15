@@ -92,9 +92,11 @@ class Functions(object):
         return np.dot(x, y) / np.sqrt((x ** 2).sum() * (y ** 2).sum())
 
     def make_blobs(self, n_centers=2, mean=None, cov=None, n_sample=None):
-        mean = mean or [[2, 3], [7, 8]]
-        cov = cov or [[[1, 0], [0, 2]],
-                      [[1, 0], [0, 2]]]
+        if mean is None:
+            mean = [[2, 3], [7, 8]]
+        if cov is None:
+            cov = [[[1, 0], [0, 2]],
+                   [[1, 0], [0, 2]]]
         n_sample = n_sample or [500, 500]
         x = []
         y = []

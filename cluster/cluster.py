@@ -6,19 +6,20 @@ import matplotlib.pyplot as plt
 
 class cluster(object):
     def __init__(self, data, k=3, itera=100, draw=0):
-        self.data = np.array(data)
+        self.data = data.copy()
         self.k = k
         self.itera = itera
         self.draw = draw
-        self.row = np.shape(self.data)[1]  # 数据维度
-        self.col = np.shape(self.data)[0]  # 数据数量
-        self.init_cent()
+        self.n_features = np.shape(self.data)[1]  # 数据维度
+        self.n_samples = np.shape(self.data)[0]  # 数据数量
+        self.cent_ind = np.array(range(self.n_samples), dtype=int)
+        self.norm()
         self.train()
 
     # 初始化中心点位置
-    def init_cent(self):
-        self.cent = np.zeros((self.k, self.row))
-        for i in range(self.row):
+    def norm(self):
+        self.cent = np.zeros((self.k, self.n_features))
+        for i in range(self.n_features):
             amax = self.data[:, i].max()
             amin = self.data[:, i].min()
             # 数据归一化
@@ -28,6 +29,10 @@ class cluster(object):
             self.cent[:, i] = np.random.random(self.k) * (amax - amin) / amax + amin / amax
 
     def train(self):
+        """
+        Attributes:
+            cent_ind: 每一个点的所属簇类
+        """
         self.cent_ind = None
 
     # 求点与中心点的距离
@@ -49,8 +54,8 @@ class cluster(object):
         cent_ = []
         wk = 0
         for i in range(self.k):
-            for j in range(self.col):
+            for j in range(self.n_samples):
                 if self.cent_ind[j] == i:
                     cent_.append(self.data[j])
             wk += np.trace(np.cov(cent_, rowvar=False))
-        return bk * (self.col - self.k) / (wk * (self.k - 1))
+        return bk * (self.n_samples - self.k) / (wk * (self.k - 1))

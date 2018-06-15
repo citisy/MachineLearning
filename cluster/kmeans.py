@@ -14,12 +14,14 @@ from cluster import cluster
 
 
 class Kmeans(cluster):
+    def init_cent(self):
+        pass
+
     # 模型训练
     def train(self):
-        self.cent_ind = np.zeros(self.col, dtype=int)
         for _ in range(self.itera):
             self.cent_cn = np.zeros(self.k, dtype=int)
-            for a in range(self.col):
+            for a in range(self.n_samples):
                 r = []
                 # 求该点与所有中心点的距离
                 for b in range(self.k):
@@ -30,13 +32,13 @@ class Kmeans(cluster):
                 self.cent_ind[a] = max_ind
                 # 记录每个中心点有多少个附属点
                 self.cent_cn[max_ind] += 1
-            cent = np.zeros((self.k, self.row))
+            cent = np.zeros((self.k, self.n_features))
             # 遍历所有数据，更新中心点位置
-            for a in range(self.col):
+            for a in range(self.n_samples):
                 cent[self.cent_ind[a]] += self.data[a]
             for a in range(self.k):
                 if self.cent_cn[a] == 0:
-                    cent[a] = self.cent[a] + np.random.random(self.row) - 0.5
+                    cent[a] = self.cent[a] + np.random.random(self.n_features) - 0.5
                 else:
                     cent[a] /= self.cent_cn[a]
             # 中心点位置不变，训练完成，退出循环
@@ -52,8 +54,8 @@ class Kmeans(cluster):
     # 二维可视化
     def show_(self):
         plt.clf()
-        for i in range(self.row // 2):
-            ax = plt.subplot(1, self.row // 2, i + 1)
+        for i in range(self.n_features // 2):
+            ax = plt.subplot(1, self.n_features // 2, i + 1)
             ax.scatter(self.data[:, i], self.data[:, i + 1], c=self.cent_ind)
             ax.scatter(self.cent[:, i], self.cent[:, i + 1], c='r')
         plt.draw()
