@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 　　(1) 任意选择k个对象作为初始的簇中心；
 　　(2) repeat；
@@ -10,15 +8,31 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from cluster import cluster
+import math
 
 
 class Kmeans(cluster):
-    def init_cent(self):
-        pass
+    def norm(self):
+        self.cent = np.zeros((self.k, self.n_features))
+        for i in range(self.n_features):
+            amax = self.data[:, i].max()
+            amin = self.data[:, i].min()
+            # 数据归一化
+            self.data[:, i] /= amax
+            # 随机生成中心点落在数据中
+            self.cent[:, i] = np.random.random(self.k) * (amax - amin) / amax + amin / amax
 
     # 模型训练
     def train(self):
+        if self.draw:
+            self.ims = []
+            self.col = math.ceil(np.sqrt(self.n_features/2))
+            self.row = math.ceil(self.n_features/2/self.col)
+            self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
+            self.fig.set_tight_layout(True)
+
         for _ in range(self.itera):
             self.cent_cn = np.zeros(self.k, dtype=int)
             for a in range(self.n_samples):
@@ -46,26 +60,29 @@ class Kmeans(cluster):
                 break
             self.cent = cent
             if self.draw:
-                self.show_()
+                self.show(self.data, self.cent_ind, self.cent)
         print('train completed!')
         if self.draw:
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 // len(self.ims), blit=True,
+                                            repeat_delay=500, repeat=False)
+            # ani.save('../img/kmeans.gif', writer='pillow')
             plt.show()
 
     # 二维可视化
-    def show_(self):
-        plt.clf()
+    def show(self, data, cent_ind, cent):
+        im = []
         for i in range(self.n_features // 2):
-            ax = plt.subplot(1, self.n_features // 2, i + 1)
-            ax.scatter(self.data[:, i], self.data[:, i + 1], c=self.cent_ind)
-            ax.scatter(self.cent[:, i], self.cent[:, i + 1], c='r')
-        plt.draw()
-        plt.pause(1)
+            a = i // self.col
+            b = i % self.col
+            im.append(self.ax[a][b].scatter(data[:, i], data[:, i + 1], c=cent_ind, animated=True))
+            im.append(self.ax[a][b].scatter(cent[:, i], cent[:, i + 1], c='r', animated=True))
+        self.ims.append(im)
 
 
 if __name__ == '__main__':
     from sklearn import datasets
 
-    X, y = datasets.make_blobs()
+    X, y = datasets.make_blobs(n_samples=500, n_features=2)
     model = Kmeans(X, 3, draw=1)
-    print(model.score())
+    # print(model.score())
     # y_pred = MiniBatchKMeans(n_clusters=2, batch_size=200, random_state=9).fit_predict(X)

@@ -13,7 +13,7 @@ cart
 
 class DT(object):
     def __init__(self, data, label):
-        self.data = data
+        self.data = np.array(data)      # data -> [n_samples, n_features]
         self.label = label
         self.n_samples = len(self.label)
         dict_ = collections.Counter(self.label)
@@ -26,11 +26,10 @@ class DT(object):
         self.n_features = len(self.dict_)
 
     def id3(self, x):
-        n_features = len(self.data[0])
-        np.unique(self.data, axis=0)
+        n_features = self.data.shape[1]
         p = []
-        for k in self.dict_.keys():
-            p.append(self.dict_[k]['py'])
+        for v in self.dict_.values():
+            p.append(v['py'])
         info_d = self.get_info(p)
         self.gain_i = np.zeros(n_features)
         for a in range(n_features):
@@ -38,9 +37,9 @@ class DT(object):
             info_i = 0
             p = []
             for i in features:
-                for k in self.dict_.keys():
-                    n = np.sum(self.data[self.dict_[k]['index'], a] == i)
-                    p.append(n / self.dict_[k]['count'])
+                for v in self.dict_.values():
+                    n = np.sum(self.data[v['index'], a] == i)
+                    p.append(n / v['count'])
                 info_dj = self.get_info(p)
                 dj_div_d = np.sum(self.data[:, a] == i) / self.n_samples
                 info_i += dj_div_d * info_dj
@@ -49,11 +48,10 @@ class DT(object):
         return self.make_trees(x)
 
     def c45(self):
-        n_features = len(self.data[0])
-        np.unique(self.data, axis=0)
+        n_features = self.data.shape[1]
         p = []
-        for k in self.dict_.keys():
-            p.append(self.dict_[k]['py'])
+        for v in self.dict_.values():
+            p.append(v['py'])
         info_d = self.get_info(p)
         self.gain_radio = np.zeros(n_features)
         for a in range(n_features):
@@ -76,22 +74,21 @@ class DT(object):
         n_sample = len(x)
         pre = np.zeros(n_sample, dtype=int)
         for a in range(n_sample):
-            data = np.concatenate((self.data, self.label.reshape(-1, 1)), axis=1)
-            # 从最大的信息增益处开始检索，越到没有的元素则跳过继续往下检索
+            data = np.concatenate((self.data, self.label.reshape(-1, 1)), axis=1)   # data -> [n_samples, n_features+1]
+            # 从最大的信息增益处开始检索，遇到没有的元素则跳过继续往下检索
             for b in self.sort:
                 if x[a][b] in data[:, b]:
                     index = np.where(data[:, b] == x[a][b])
                     data = data[index]
                 else:
                     continue
-            pre[a] = data[np.random.randint(len(data))][-1]
+            pre[a] = data[np.random.randint(data.shape[0])][-1]
         return pre
 
     def get_info(self, p):
         """
-        gain:
-            gain = -SUM(pi*log2(pi))
-            pi = 0 -> pi*log2(pi) = 0
+        return info, gain of p
+            info = -SUM(p*log2(p)), if p = 0 , p*log2(p) = 0
         """
         info = 0
         for i in p:
@@ -108,6 +105,6 @@ if __name__ == '__main__':
     model = DT(x, y)
     pre = model.id3(x)
     # 预测与样本标签可能不一致，因为我们训练的数据是随机的，可能有多于一条相同的x指向不同的y
-    # x特征值越大，出现上述情况的概率越小
+    # x特征数越大，出现上述情况的概率越小
     for i in range(100):
         print(pre[i], y[i])

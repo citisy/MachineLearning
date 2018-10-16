@@ -1,23 +1,69 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import math
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 
 class Liner(object):
-    def __init__(self, data, label):
-        self.data = data.copy()
-        self.label = label.copy()
+    def __init__(self, data, label, draw=0):
+        self.data = np.array(data, dtype=float)
+        self.label = np.array(label)
         self.label = np.reshape(self.label, (-1, 1))
+        self.draw = draw
         self.n_samples = np.shape(data)[0]
         self.n_features = np.shape(data)[1]
-        # 增加一维 -> x0 = 1
-        self.data = np.concatenate((np.ones((self.n_samples, 1)), self.data), axis=1)
+        self.norm()
 
-    def gradient_descent(self, lr=1e-3, itera=100):
+        self.data = np.concatenate((np.ones((self.n_samples, 1)), self.data), axis=1)
         """
-        :param lr: 学习率，太小会不收敛
-        :param itera: 迭代次数，学习率越小，迭代次数越大
+        before concatenate, x = [x1, x2, ...]
+        >>>data.shape
+        >>>(100, 1)
+        
+        after concatenate, x = [x0, x1, x2, ...]:
+        >>>data.shape
+        >>>(100, 2)
+        
+        in such example, data is x axis, label is y axis
+        """
+
+        if self.draw:
+            self.ims = []
+            self.col = math.ceil(np.sqrt(self.n_features/2))
+            self.row = math.ceil(self.n_features/2/self.col)
+            self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
+            self.ax[0][0].set_ylim(self.label.min()*1.2, self.label.max()*1.2)
+            self.fig.set_tight_layout(True)
+
+    def norm(self):
+        """
+        before norm:
+        >> data
+        >>[[-3.62194721 -5.49173113]
+         [-3.23435367 -4.67226512]
+         [-1.58990744 -9.87007247]
+         [ 1.95358937 -1.92006285]
+         [ 2.68055418 -1.53837307]]
+        after norm
+        >>data
+        >>[[-0.83333333 -0.46366859]
+         [-0.74415627 -0.39448082]
+         [-0.36580402 -0.83333333]
+         [ 0.44947953 -0.16211151]
+         [ 0.61673874 -0.12988532]]
+        all data will fall between [-1, 1]
+        """
+        for i in range(self.n_features):
+            amax = abs(self.data[:, i].max())
+            amin = abs(self.data[:, i].min())
+            self.data[:, i] /= max(amax, amin) * 1.2
+
+    def gradient_descent(self, lr=1e-2, itera=100):
+        """
+        :param lr: learning rate, if too big, the model can't be convergence
+        :param itera: iteration, it's big while lr is small
         :return:
         """
         xmean = np.mean(self.data, axis=0)
@@ -26,7 +72,15 @@ class Liner(object):
         xMat = np.mat(self.data)
         yMat = np.mat(self.label)
         for i in range(itera):
+            if self.draw:
+                self.show(self.data, self.label)
             self.w += lr * (xMat.T * (yMat - xMat * self.w))
+
+        if self.draw:
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
+                                            repeat_delay=500, repeat=False)
+            # ani.save('img/dbscan.gif', writer='pillow', fps=1000)
+            plt.show()
 
     def normal_equations(self):
         """
@@ -36,20 +90,28 @@ class Liner(object):
         yMat = np.mat(self.label)
         xTx = xMat.T * xMat
         self.w = xTx.I * (xMat.T * yMat)
+        if self.draw:
+            self.show(self.data, self.label)
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1, blit=True,
+                                            repeat_delay=500, repeat=False)
+            # ani.save('img/dbscan.gif', writer='pillow', fps=1000)
+            plt.show()
 
     def predict(self, data):
-        data_ = data.copy()
-        data_ = np.concatenate((np.ones((len(data_), 1)), data_), axis=1)
-        self.pre = data_ * self.w
-        return self.pre
+        data = np.array(data)
+        data = np.concatenate((np.ones((len(data), 1)), data), axis=1)
+        pre = data * self.w
+        return pre
 
-    def draw(self):
-        plt.scatter(self.data[:, 1], self.label)
-        x = np.linspace(-2, 2, 20).reshape(-1, 1)
-        # x = np.mat(np.concatenate((np.ones((len(x), 1)), x.reshape(-1, 1)), axis=1))
+    def show(self, data, label):
+        im = []
+        x = np.linspace(data[:, 1].min(), data[:, 1].max(), 5).reshape(-1, 1)
         y = self.predict(x)
-        plt.plot(x, y)
-        plt.show()
+        sca = self.ax[0][0].scatter(data[:, 1], label, c='b', animated=True)
+        line, = self.ax[0][0].plot(x, y, c='r', animated=True)
+        im.append(sca)
+        im.append(line)
+        self.ims.append(im)
 
 
 if __name__ == '__main__':
@@ -57,6 +119,5 @@ if __name__ == '__main__':
 
     x, y = datasets.make_regression(n_samples=100, n_features=1, random_state=0, noise=4.0,
                                     bias=100.0)
-    model = Liner(x, y)
+    model = Liner(x, y, draw=1)
     model.gradient_descent()
-    model.draw()

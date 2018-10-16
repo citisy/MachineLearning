@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
-
-
 """
 knn是lazy learning，基本不学习，网络结构很简单，但每次都有遍历所有样本计算距离，所以计算量很大。
 适合大规模数据，小数据错误率高。
 判定标准：“近朱者赤，近墨者黑”以及“少数服从多数”。
 """
+
 import numpy as np
 import matplotlib.pyplot as plt
 import collections
@@ -14,10 +12,10 @@ from matplotlib.colors import ListedColormap
 
 class KNN(object):
     def __init__(self, data, label, k=10):
-        self.data = data
+        self.data = np.array(data)
         self.label = label
         self.k = k
-        self.n_sample = len(self.data)
+        self.n_sample = self.data.shape[0]
 
     def predict(self, x):
         n_test = len(x)
