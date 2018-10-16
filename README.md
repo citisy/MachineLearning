@@ -1,17 +1,21 @@
 ## Classification
-[DecisionTree.py](Classification/DecisionTree.py)<br>
-[KNN.py](Classification/KNN.py)<br>
-[LogisticRegression.py](Classification/LogisticRegression.py)<br>
-[NaiveBayes.py](Classification/NaiveBayes.py)<br>
-[SVM.py](Classification/SVM.py)<br>
+######[DecisionTree.py](Classification/DecisionTree.py)
+######[KNN.py](Classification/KNN.py)
+######[LogisticRegression.py](Classification/LogisticRegression.py)
+######[NaiveBayes.py](Classification/NaiveBayes.py)
+######[SVM.py](Classification/SVM.py)
 ## cluster
-[cluster.py](cluster/cluster.py)<br>
-[DBSCAN.py](cluster/DBSCAN.py)<br>
-[Hierarchical.py](cluster/Hierarchical.py)<br>
-[kmeans.py](cluster/kmeans.py)<br>
-[SOM.py](cluster/SOM.py)<br>
+######[cluster.py](cluster/cluster.py)
+######[DBSCAN.py](cluster/DBSCAN.py)
+![image](img/DBSCAN.gif)
+######[Hierarchical.py](cluster/Hierarchical.py)
+![image](img/Hierarchical.gif)
+######[kmeans.py](cluster/kmeans.py)
+![image](img/kmeans.gif)
+######[SOM.py](cluster/SOM.py)
+![image](img/SOM.gif)
 ## Regression
-[LinerRegression.py](Regression/LinerRegression.py)<br>
+######[LinerRegression.py](Regression/LinerRegression.py)
 ## Dimensionality_reduction
-[LDA.py](Dimensionality_reduction/LDA.py)<br>
-[PCA.py](Dimensionality_reduction/PCA.py)<br>
+######[LDA.py](Dimensionality_reduction/LDA.py)
+######[PCA.py](Dimensionality_reduction/PCA.py)
