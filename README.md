@@ -7,9 +7,9 @@
 ## cluster
 ######[cluster.py](cluster/cluster.py)
 ######[DBSCAN.py](cluster/DBSCAN.py)
-![image](img/DBSCAN.gif)
+![image](img/dbscan.gif)
 ######[Hierarchical.py](cluster/Hierarchical.py)
-![image](img/Hierarchical.gif)
+![image](img/hierarchical.gif)
 ######[kmeans.py](cluster/kmeans.py)
 ![image](img/kmeans.gif)
 ######[SOM.py](cluster/SOM.py)
