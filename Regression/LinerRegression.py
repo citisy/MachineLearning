@@ -4,6 +4,8 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import seaborn as sns
+sns.set(style="white", palette="muted", color_codes=True)
 
 
 class Liner(object):
@@ -78,8 +80,8 @@ class Liner(object):
 
         if self.draw:
             ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
-                                            repeat_delay=500, repeat=False)
-            # ani.save('img/dbscan.gif', writer='pillow', fps=1000)
+                                            repeat_delay=1000, repeat=False)
+            ani.save('../img/LinerRegression.gif', writer='pillow', fps=1000)
             plt.show()
 
     def normal_equations(self):

@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import math
+import time
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import seaborn as sns
+
+sns.set(style="white", palette="muted", color_codes=True)
 
 
 class SVM(object):
-    def __init__(self, data, label, c=1.0, tol=1e-3, max_iter=10, kernel='liner', show=0,
+    def __init__(self, data, label, c=1.0, tol=1e-3, max_iter=10, kernel='liner', draw=0,
                  gamma=None, r=None, d=None):
         """
         Parameters:
@@ -24,36 +30,57 @@ class SVM(object):
                 1 -> 1vr classification
                 2 -> 1v1 classification
         """
-        self.data = data
-        self.label = label  # 数据标签，分为-1和+1
+        self.data = np.array(data)
+        self.label = np.array(label)  # 数据标签，分为-1和+1
         self.c = c
         self.tol = tol
         self.max_iter = max_iter
         self.kernel = kernel
-        self.show = show
+        self.draw = draw
         self.gamma = gamma or 0.1
         self.r = r or 1
         self.d = d or 2
-        self.n_sample = np.shape(self.data)[0]
-        self.n_feature = np.shape(self.data)[1]
+        self.n_sample = self.data.shape[0]
+        self.n_features = self.data.shape[1]
         self._class = np.unique(self.label)
         self.n_class = len(self._class)
 
-        self.pre = np.zeros(self.n_sample)
         self.norm()
-        # self.train()
 
-    # 数据归一化
+        if self.draw:
+            self.ims = []
+            self.col = math.ceil(np.sqrt(self.n_features / 2))
+            self.row = math.ceil(self.n_features / 2 / self.col)
+            self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
+            self.ax[0][0].set_ylim(self.label.min() * 1.2, self.label.max() * 1.2)
+            self.fig.set_tight_layout(True)
+
     def norm(self):
-        for i in range(self.n_feature):
-            amax = np.abs(self.data[:, i]).max()
-            amin = np.abs(self.data[:, i]).min()
-            self.data[:, i] /= amax
-            # todo: amax不能取绝对值
-            # self.__data[:, i] = 2 * (self.__data[:, i] - amin) / (amax - amin) - 1
+        """
+        before norm:
+        >> data
+        >>[[-3.62194721 -5.49173113]
+         [-3.23435367 -4.67226512]
+         [-1.58990744 -9.87007247]
+         [ 1.95358937 -1.92006285]
+         [ 2.68055418 -1.53837307]]
+        after norm
+        >>data
+        >>[[-0.83333333 -0.46366859]
+         [-0.74415627 -0.39448082]
+         [-0.36580402 -0.83333333]
+         [ 0.44947953 -0.16211151]
+         [ 0.61673874 -0.12988532]]
+        all data will fall between [-1, 1]
+        """
+        for i in range(self.n_features):
+            amax = abs(self.data[:, i].max())
+            amin = abs(self.data[:, i].min())
+            self.data[:, i] /= max(amax, amin) * 1.2
 
     def train(self):
         n = self.n_sample
+        pre = np.zeros(self.n_sample)
         itera = 0
         while itera < self.max_iter:
             a_change = 0  # a改变的次数
@@ -72,7 +99,7 @@ class SVM(object):
                         continue
                     # 确定eta
                     eta = self.getEta(i, j)
-                    # #  如果eta等于0或者小于0 则表明a最优值应该在L或者H上
+                    #  如果eta等于0或者小于0 则表明a最优值应该在L或者H上
                     ai_old = self.__a[i]
                     aj_old = self.__a[j]
                     # 更新aj
@@ -86,9 +113,9 @@ class SVM(object):
                     self.__a[j] = max(self.__a[j], l)
                     self.__a[i] += self.__label[i] * self.__label[j] * (aj_old - self.__a[j])
                     # j是随机挑选的情况
-                    if self.__a[i] > 0 and self.__a[i] < self.c:
+                    if 0 < self.__a[i] < self.c:
                         self.__ecache[i] = i
-                    if self.__a[j] > 0 and self.__a[j] < self.c:
+                    if 0 < self.__a[j] < self.c:
                         self.__ecache[j] = j
 
                     # 更新b
@@ -100,14 +127,14 @@ class SVM(object):
                 itera = 0
             self.__w = self.getW()
             for i in range(self.n_sample):
-                self.pre[i] = self.predict(i, self.__w)
-            if self.show:
-                self.draw()
-        print("train complete!")
+                pre[i] = self.predict(i, self.__w)
+            if self.draw:
+                self.show(self.__data, pre, [self.__w], [self.__b])
 
     def svc(self):
+        stime = time.time()
         self.__b = 0
-        self.__w = np.zeros(self.n_feature)
+        self.__w = np.zeros(self.n_features)
         self.__a = np.zeros(self.n_sample)  # 拉格朗日乘子
         self.__ecache = np.zeros(self.n_sample, dtype=int) - 1
         self.__data = self.data.copy()
@@ -115,6 +142,13 @@ class SVM(object):
         self.__label[np.where(self.__label == self._class[0])] = -1
         self.__label[np.where(self.__label != -1)] = 1
         self.train()
+        etime = time.time()
+        print('train completed! time: %s' % str(etime - stime))
+        if self.draw:
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
+                                            repeat_delay=1000, repeat=False)
+            # ani.save('../img/SVM_svc.gif', writer='pillow')
+            plt.show()
 
     def _1vr(self):
         """
@@ -123,15 +157,17 @@ class SVM(object):
             例如，3个位于同一平行线上的类，中间的那个类分类效果就不好
         :return:
         """
+        stime = time.time()
+
         self.b = np.zeros(self.n_class)
-        self.w = np.zeros((self.n_class, self.n_feature))
+        self.w = np.zeros((self.n_class, self.n_features))
         self.a = np.zeros((self.n_class, self.n_sample))  # 拉格朗日乘子
         self.ecache = np.zeros((self.n_class, self.n_sample), dtype=int) - 1
         self.label_cache = np.zeros((self.n_class, self.n_sample))
         self.__data = self.data.copy()
         for i in range(self.n_class):
             self.__b = 0
-            self.__w = np.zeros(self.n_feature)
+            self.__w = np.zeros(self.n_features)
             self.__a = np.zeros(self.n_sample)  # 拉格朗日乘子
             self.__ecache = np.zeros(self.n_sample, dtype=int) - 1
             self.__label = self.label.copy()
@@ -143,21 +179,23 @@ class SVM(object):
             self.a[i] = self.__a
             self.ecache[i] = self.__ecache
             self.label_cache[i] = self.__label
-        for i in range(self.n_sample):
-            p = []
-            for j in range(self.n_class):
-                self.__b = self.b[j]
-                self.__w = self.w[j]
-                self.__a = self.a[j]
-                self.__label = self.label_cache[j]
-                u = np.dot(self.__w, self.data[i]) + self.__b
-                p.append(u)
-            # 判断依据：1对多中的‘1’被划分为‘-1’类，故其判断值小于0，故选择预测值最小为预测的类
-            self.pre[i] = self._class[np.argmin(p)]
-        self.draw()
+
+        etime = time.time()
+        print('train completed! time: %s' % str(etime - stime))
+
+        if self.draw:
+            pre = self.predict_1vr(self.data)
+
+            self.show(self.data, pre, self.w, self.b, 0)
+
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
+                                            repeat_delay=1000, repeat=False)
+            # ani.save('../img/SVM_1vr.gif', writer='pillow')
+            plt.show()
 
     def _1v1(self):
-        k = self.n_class * (self.n_class - 1) // 2
+        stime = time.time()
+
         self.b = []
         self.w = []
         self.a = []  # 拉格朗日乘子
@@ -175,10 +213,9 @@ class SVM(object):
                 self.__label[np.where(self.__label != -1)] = 1
                 self.n_sample = len(self.__label)
                 self.__b = 0
-                self.__w = np.zeros(self.n_feature)
+                self.__w = np.zeros(self.n_features)
                 self.__a = np.zeros(self.n_sample)  # 拉格朗日乘子
                 self.__ecache = np.zeros(self.n_sample, dtype=int) - 1
-                self.pre = np.zeros(self.n_sample)
                 self.train()
                 self.b.append(self.__b)
                 self.w.append(self.__w)
@@ -187,27 +224,18 @@ class SVM(object):
                 self.label_cache.append(self.__label)
                 self.data_cache.append(self.__data)
             a += 1
-        self.n_sample = np.shape(self.data)[0]
-        self.pre = np.zeros(self.n_sample)
-        for i in range(self.n_sample):
-            p = np.zeros(self.n_class, dtype=int)
-            for j in range(k):
-                self.__b = self.b[j]
-                self.__w = self.w[j]
-                x = 0
-                a = self.n_class - 1
-                while j - a >= 0:
-                    j = j - a
-                    a -= 1
-                    x += 1
-                u = np.dot(self.__w, self.data[i]) + self.__b
-                if u > 0:
-                    p[x + j + 1] += 1
-                else:
-                    p[x] += 1
-            self.pre[i] = self._class[np.argmax(p)]
-        self.__data = self.data.copy()
-        self.draw()
+
+        etime = time.time()
+        print('train completed! time: %s' % str(etime - stime))
+        if self.draw:
+            pre = self.predict_1v1(self.data)
+
+            self.show(self.data, pre, self.w, self.b, 0)
+
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
+                                            repeat_delay=1000, repeat=False)
+            # ani.save('../img/SVM_1v1.gif', writer='pillow')
+            plt.show()
 
     # 判断是否符合kkt条件
     def is_kkt(self, e, i):
@@ -323,10 +351,10 @@ class SVM(object):
         return eta
 
     def getb(self, i, j, ei, ej, ai_old, aj_old):
-        b1 = self.__b - ei - self.__label[i] * (self.__a[i] - ai_old) * self.__kernel(i, i) \
-             - self.__label[j] * (self.__a[j] - aj_old) * self.__kernel(i, j)
-        b2 = self.__b - ej - self.__label[i] * (self.__a[i] - ai_old) * self.__kernel(i, j) \
-             - self.__label[j] * (self.__a[j] - aj_old) * self.__kernel(j, j)
+        b1 = (self.__b - ei - self.__label[i] * (self.__a[i] - ai_old) * self.__kernel(i, i)
+              - self.__label[j] * (self.__a[j] - aj_old) * self.__kernel(i, j))
+        b2 = (self.__b - ej - self.__label[i] * (self.__a[i] - ai_old) * self.__kernel(i, j)
+              - self.__label[j] * (self.__a[j] - aj_old) * self.__kernel(j, j))
         if 0 < self.__a[i] < self.c:
             return b1
         if 0 < self.__a[j] < self.c:
@@ -347,25 +375,72 @@ class SVM(object):
                 return 2
             return 1
 
-    def draw(self):
-        plt.clf()
-        ax = plt.gca()
-        ax.set_xlim([-1.2, 1.2])
+    def predict_1vr(self, data):
+        data = np.array(data)
+        n_sample = data.shape[0]
+        pre = np.zeros(n_sample)
+        for i in range(n_sample):  # predict
+            p = []
+            for j in range(self.n_class):
+                b = self.b[j]
+                w = self.w[j]
+                u = np.dot(w, data[i]) + b
+                p.append(u)
+            # 判断依据：1对多中的‘1’被划分为‘-1’类，故其判断值小于0，故选择预测值最小为预测的类
+            pre[i] = self._class[np.argmin(p)]
+        return pre
+
+    def predict_1v1(self, data):
+        data = np.array(data)
+        n_sample = data.shape[0]
+        k = self.n_class * (self.n_class - 1) // 2
+        pre = np.zeros(n_sample)
+        for i in range(n_sample):
+            p = np.zeros(self.n_class, dtype=int)
+            for j in range(k):
+                b = self.b[j]
+                w = self.w[j]
+                x = 0
+                a = self.n_class - 1
+                while j - a >= 0:
+                    j = j - a
+                    a -= 1
+                    x += 1
+                u = np.dot(w, data[i]) + b
+                if u > 0:
+                    p[x + j + 1] += 1
+                else:
+                    p[x] += 1
+            pre[i] = self._class[np.argmax(p)]
+        return pre
+
+    def show(self, data, pre, w, b, draw_support_line=1):
+        im = []
+        ax = self.ax[0][0]
+        ax.set_xlim(
+            [-1.2, 1.2])  # data will be normalized between [-1, 1], so set the axis between [-1.2, 1.2] is enough
         ax.set_ylim([-1.2, 1.2])
-        ax.scatter(self.__data[:, 0], self.__data[:, 1], c=self.pre)
         x = np.linspace(-1, 1)
-        # 整合得y = -(w1*x+b)/w2
-        y = -(self.__w[0] * x + self.__b) / self.__w[1]
-        y1 = -(self.__w[0] * x + self.__b + 1) / self.__w[1]
-        y2 = -(self.__w[0] * x + self.__b - 1) / self.__w[1]
-        ax.plot(x, y)
-        ax.plot(x, y1)
-        ax.plot(x, y2)
-        plt.draw()
-        plt.pause(0.01)
+        sca = ax.scatter(data[:, 0], data[:, 1], c=pre)
+        im.append(sca)
+        for i in range(len(w)):
+            # draw line base on w, b, base line function: y = -(w1*x+b)/w2
+            y = -(w[i][0] * x + b[i]) / w[i][1]
+            line1, = ax.plot(x, y)
+            im.append(line1)
+            if draw_support_line:
+                y1 = -(w[i][0] * x + b[i] + 1) / w[i][1]
+                y2 = -(w[i][0] * x + b[i] - 1) / w[i][1]
+                line2, = ax.plot(x, y1)
+                line3, = ax.plot(x, y2)
+                im.append(line2)
+                im.append(line3)
+        self.ims.append(im)
 
 
 def sklearn_pre(x, y):
+    from sklearn import svm
+
     clf = svm.SVC(kernel='linear')
     clf.fit(x, y)
     w = clf.coef_[0]
@@ -390,9 +465,8 @@ def sklearn_pre(x, y):
 
 if __name__ == '__main__':
     from sklearn import datasets
-    from sklearn import svm
 
-    x, y = datasets.make_blobs(centers=2)
-    model = SVM(x, y, c=0.5, show=1, kernel='liner')
-    model.svc()
-    sklearn_pre(model.data, model.label)
+    x, y = datasets.make_blobs(centers=3)
+    model = SVM(x, y, c=0.5, draw=1, kernel='liner')
+    model._1v1()
+    # sklearn_pre(model.data, model.label)

@@ -12,6 +12,8 @@ import matplotlib.animation as animation
 from cluster import cluster
 import time
 import math
+import seaborn as sns
+sns.set(style="white", palette="muted", color_codes=True)
 
 
 class DBSCAN(cluster):
@@ -108,8 +110,8 @@ class DBSCAN(cluster):
                     del distances[y]
                     del index[y]
 
-            if self.draw:
-                self.show(self.data, self.cent_ind)
+                if self.draw:
+                    self.show(self.data, self.cent_ind)
 
         # border point
         for i in range(self.n_samples):
@@ -151,7 +153,7 @@ class DBSCAN(cluster):
         if self.draw:
             ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
                                             repeat_delay=500, repeat=False)
-            # ani.save('../img/DBSCAN.gif', writer='pillow', fps=1000)
+            ani.save('../img/DBSCAN.gif', writer='pillow')
             plt.show()
 
     def train_(self):

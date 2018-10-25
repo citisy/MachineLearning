@@ -10,6 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import math
+import seaborn as sns
+sns.set(style="white", palette="muted", color_codes=True)
 
 
 class SOM(object):
@@ -76,11 +78,10 @@ class SOM(object):
         if self.draw:
             ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 / len(self.ims), blit=True,
                                             repeat_delay=500, repeat=True)
-            ani.save('../img/SOM.gif', writer='pillow')
             ani2 = animation.ArtistAnimation(self.fig2, self.ims2, interval=2000 / len(self.ims2), blit=True,
-                                            repeat_delay=500, repeat=True)
-            # ani.save('../img/SOM.gif', writer='pillow')
-            # ani2.save('../img/SOM2.gif', writer='pillow')
+                                            repeat_delay=1000, repeat=False)
+            ani.save('../img/SOM_before_train.gif', writer='pillow')
+            ani2.save('../img/SOM_after_train.gif', writer='pillow')
             plt.show()
 
     def update_lr(self, lr, t, n):

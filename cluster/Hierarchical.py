@@ -11,7 +11,8 @@ import matplotlib.animation as animation
 from cluster import cluster
 import time
 import math
-
+import seaborn as sns
+sns.set(style="white", palette="muted", color_codes=True)
 
 class Hierarchical(cluster):
     def norm(self):
@@ -72,9 +73,9 @@ class Hierarchical(cluster):
         etime = time.time()
         print('train completed! time: %s' % str(etime - stime))
         if self.draw:
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / self.n_samples, blit=True,
-                                            repeat_delay=500, repeat=False)
-            # ani.save('../img/Hierarchical.gif', writer='pillow', fps=1000)
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
+                                            repeat_delay=1000, repeat=False)
+            # ani.save('../img/Hierarchical.gif', writer='pillow')
             plt.show()
 
     def train_(self):  # this method is slower, but the code looks like more beautiful

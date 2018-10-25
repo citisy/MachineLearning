@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from cluster import cluster
 import math
+import seaborn as sns
+sns.set(style="white", palette="muted", color_codes=True)
 
 
 class Kmeans(cluster):
@@ -64,7 +66,7 @@ class Kmeans(cluster):
         print('train completed!')
         if self.draw:
             ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 // len(self.ims), blit=True,
-                                            repeat_delay=500, repeat=False)
+                                            repeat_delay=1000, repeat=False)
             # ani.save('../img/kmeans.gif', writer='pillow')
             plt.show()
 
