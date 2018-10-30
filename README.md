@@ -31,7 +31,16 @@
 
 ### [LogisticRegression.py](Classification/LogisticRegression.py)
 
+| LogisticRegression_before | LogisticRegression_after |
+| :----: | :----: |
+|![LogisticRegression_before](img/LogisticRegression_before.png)|![LogisticRegression_after](img/LogisticRegression_after.png)|
+
+
 ### [NaiveBayes.py](Classification/NaiveBayes.py)
+
+| gaussian_predict2D | gaussian_predict3D |
+| :----: | :----: |
+|![gaussian_predict2D](img/gaussian_predict2D.png)|![gaussian_predict3D](img/gaussian_predict3D.png)|
 
 ### [SVM.py](Classification/SVM.py)
 

@@ -41,5 +41,5 @@ if __name__ == '__main__':
     x, y = datasets.make_blobs()
     model = KNN(x, y)
     pre = model.predict(x)
-    for i in range(len(pre)):
-        print(pre[i], y[i])
+    acc = np.sum(pre == y) / len(x)
+    print(acc)

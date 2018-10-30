@@ -47,7 +47,7 @@ class DT(object):
         self.sort = self.gain_i.argsort()
         return self.make_trees(x)
 
-    def c45(self):
+    def c45(self, x):
         n_features = self.data.shape[1]
         p = []
         for v in self.dict_.values():
@@ -103,8 +103,8 @@ if __name__ == '__main__':
     y = np.random.randint(5, size=(100,))
 
     model = DT(x, y)
-    pre = model.id3(x)
+    pre = model.c45(x)
     # 预测与样本标签可能不一致，因为我们训练的数据是随机的，可能有多于一条相同的x指向不同的y
     # x特征数越大，出现上述情况的概率越小
-    for i in range(100):
-        print(pre[i], y[i])
+    acc = np.sum(pre == y) / len(x)
+    print(acc)

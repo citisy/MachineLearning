@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import matplotlib.pyplot as plt
 import collections
+import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from mpl_toolkits.mplot3d import Axes3D
 
 
 class NB(object):
@@ -28,9 +29,10 @@ class NB(object):
                     'phi':
                     'n_xi':
         """
-        self.data = data
-        self.label = label
-        self.n_samples = len(self.label)
+        self.data = np.array(data, dtype=float)
+        self.label = np.array(label)
+        self.n_samples = self.data.shape[0]
+        self.n_feature = self.data.shape[1]
         self.n_i = len(np.unique(self.data))
         dict_ = collections.Counter(self.label)
         self.dict_ = {}
@@ -41,15 +43,52 @@ class NB(object):
             self.dict_[k]['py'] = v / self.n_samples
         self.n_features = len(self.dict_)
 
-    # 高斯判别
-    def gaussian_predict(self, x):
-        n_sample = len(x)
-        pre = np.zeros(n_sample, dtype=int)
+    def norm(self, data):
+        """
+        before norm:
+        >> data
+        >>[[-3.62194721 -5.49173113]
+         [-3.23435367 -4.67226512]
+         [-1.58990744 -9.87007247]
+         [ 1.95358937 -1.92006285]
+         [ 2.68055418 -1.53837307]]
+        after norm
+        >>data
+        >>[[-0.83333333 -0.46366859]
+         [-0.74415627 -0.39448082]
+         [-0.36580402 -0.83333333]
+         [ 0.44947953 -0.16211151]
+         [ 0.61673874 -0.12988532]]
+        all data will fall between [-1, 1]
+        """
+        data = np.array(data, dtype=float)
+        print(data)
+        for i in range(self.n_feature):
+            data[:, i] /= self.pole[i] * 0.1
+
+        return data
+
+    def gaussian_predict_(self, data):
+        """
+        if the gaussian use without trained, use this method
+        """
+        self.pole = []
+        for i in range(self.n_feature):
+            self.pole.append(max(abs(self.data[:, i].min()), abs(self.data[:, i].max())))
+        self.data = self.norm(self.data)
         for k in self.dict_.keys():
             mu = np.mean(self.data[self.dict_[k]['index']], axis=0)
             sigma = np.mat(np.cov(self.data[self.dict_[k]['index']], rowvar=False))
             self.dict_[k]['mu'] = mu
             self.dict_[k]['sigma'] = sigma
+        pre = self.gaussian_predict(data)
+        return pre
+
+    # 高斯判别
+    def gaussian_predict(self, data):
+        x = np.array(data)
+        n_sample = len(x)
+        pre = np.zeros(n_sample, dtype=int)
         for j in range(n_sample):
             for k in self.dict_.keys():
                 delta = x[j] - self.dict_[k]['mu']
@@ -128,14 +167,13 @@ class NB(object):
         return pre
 
     def show(self):
-        from mpl_toolkits.mplot3d import Axes3D
-        plt.clf()
-        ax = plt.gca()
-        fig = plt.figure()
-        ax2 = Axes3D(fig)
+        fig1, ax = plt.subplots()
+        fig2, _ = plt.subplots()
+        ax2 = Axes3D(fig2)
+
         for k in self.dict_.keys():
-            x = np.arange(self.dict_[k]['mu'][0] - 2, self.dict_[k]['mu'][0] + 2, 0.1)
-            y = np.arange(self.dict_[k]['mu'][1] - 2, self.dict_[k]['mu'][1] + 2, 0.1)
+            x = np.arange(self.dict_[k]['mu'][0] - 3, self.dict_[k]['mu'][0] + 3, 0.1)
+            y = np.arange(self.dict_[k]['mu'][1] - 3, self.dict_[k]['mu'][1] + 3, 0.1)
             x, y = np.meshgrid(x, y)
             d = np.linalg.det(self.dict_[k]['sigma'])
             z = np.exp(
@@ -147,6 +185,8 @@ class NB(object):
             cs = ax.contour(x, y, z)
             ax.clabel(cs, inline=1, fontsize=10)
             ax2.plot_surface(x, y, z, rstride=1, cstride=1, cmap='rainbow')
+
+        # draw interface
         x_min, x_max = self.data[:, 0].min() - 1, self.data[:, 0].max() + 1
         y_min, y_max = self.data[:, 1].min() - 1, self.data[:, 1].max() + 1
         x = np.arange(x_min, x_max, 0.1)
@@ -161,28 +201,26 @@ class NB(object):
         ax2.set_xlabel('x')
         ax2.set_ylabel('y')
         ax2.set_zlabel('z')
+        # fig1.savefig('../img/gaussian_predict2D.png')
+        # fig2.savefig('../img/gaussian_predict3D.png')
         plt.show()
 
 
 if __name__ == '__main__':
     from sklearn import datasets
+    from sklearn.naive_bayes import GaussianNB  # 高斯预测
 
-    # 高斯预测
-    from sklearn.naive_bayes import GaussianNB
-
-    data = datasets.load_iris()
-    x = data.data
-    y = data.target
-    x, y = datasets.make_blobs(centers=3)
-    model = NB(x, y)
-    pre = model.gaussian_predict(x)
-    for i in range(len(x)):
-        print(pre[i], y[i])
-    model.show()
-    m = GaussianNB().fit(x, y)
-    pre = m.predict(x)
-    for i in range(len(x)):
-        print(pre[i], y[i])
+    # x, y = datasets.make_blobs(centers=3)
+    # model = NB(x, y)
+    # pre = model.gaussian_predict_(model.norm(x))
+    # acc = np.sum(pre == y)/len(x)
+    # print(acc)
+    # model.show()
+    #
+    # m = GaussianNB().fit(x, y)
+    # pre = m.predict(x)
+    # acc = np.sum(pre == y)/len(x)
+    # print(acc)
 
     # # 多项式预测
     # from sklearn.naive_bayes import MultinomialNB
@@ -191,19 +229,23 @@ if __name__ == '__main__':
     # y = np.array([1, 2, 3, 4, 5, 6])
     # model = NB(x, y)
     # pre = model.multinomial_predict(x)
-    # for i in range(6):
-    #     print(pre[i], y[i])
-    # clf = MultinomialNB().fit(x, y)
-    # print(clf.predict(x))
+    # acc = np.sum(pre == y)/len(x)
+    # print(acc)
+    # m = MultinomialNB().fit(x, y)   # label >= 0
+    # pre = m.predict(x)
+    # acc = np.sum(pre == y)/len(x)
+    # print(acc)
 
-    # # # 伯努利判别
-    # from sklearn.naive_bayes import BernoulliNB
-    #
-    # x = np.random.randint(2, size=(6, 100))
-    # y = np.array([1, 2, 3, 4, 5, 6])
-    # clf = BernoulliNB().fit(x, y)
-    # print(clf.predict(x))
-    # model = NB(x, y)
-    # pre = model.bernoulli_predict(x)
-    # for i in range(6):
-    #     print(pre[i], y[i])
+    # 伯努利判别
+    from sklearn.naive_bayes import BernoulliNB
+
+    x = np.random.randint(2, size=(6, 100))
+    y = np.array([1, 2, 3, 4, 5, 6])
+    model = NB(x, y)
+    pre = model.bernoulli_predict(x)
+    acc = np.sum(pre == y)/len(x)
+    print(acc)
+    m = BernoulliNB().fit(x, y)
+    pre = m.predict(x)
+    acc = np.sum(pre == y)/len(x)
+    print(acc)

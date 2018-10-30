@@ -2,6 +2,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set(style="white", palette="muted", color_codes=True)
 
 from Regression.LinerRegression import Liner
 
@@ -15,7 +17,7 @@ class Logistic(object):
         self.train()
 
     def train(self):
-        self.model = Liner(self.data, self.label)
+        self.model = Liner(self.data, self.label, draw=0)
         self.model.normal_equations()
 
     def predict(self, data):
@@ -27,11 +29,15 @@ class Logistic(object):
         for i in range(n_samples):
             if sigma[i] >= 0.5:
                 pre[i] = 1
-        self.show(data, pre, sigma)
+        self.show(data, pre)
 
-    def show(self, data, pre, sigma):
-        plt.scatter(data[:, 0], data[:, 1], c=pre)
-        plt.plot(data[:, 0], sigma)
+    def show(self, data, pre):
+        fig1, ax1 = plt.subplots()
+        fig2, ax2 = plt.subplots()
+        ax1.scatter(data[:, 0], data[:, 1], c=self.label)
+        ax2.scatter(data[:, 0], data[:, 1], c=pre)
+        fig1.savefig('../img/LogisticRegression_before')
+        fig2.savefig('../img/LogisticRegression_after')
         plt.show()
 
 
@@ -40,10 +46,6 @@ if __name__ == '__main__':
 
     x, y = datasets.make_regression(n_samples=100, n_features=2, random_state=0, noise=4.0,
                                     bias=100.0)
-    x = [[i, 0] for i in range(50)]
-    x += [[i, 1] for i in range(50, 100)]
-    y = [0 for i in range(50)]
-    y += [1 for i in range(50)]
 
     model = Logistic(x, y)
     model.predict(x)

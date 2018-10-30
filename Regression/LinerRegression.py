@@ -10,26 +10,31 @@ sns.set(style="white", palette="muted", color_codes=True)
 
 class Liner(object):
     def __init__(self, data, label, draw=0):
+        self.raw_data = np.array(data, dtype=float)
         self.data = np.array(data, dtype=float)
         self.label = np.array(label)
         self.label = np.reshape(self.label, (-1, 1))
         self.draw = draw
         self.n_samples = np.shape(data)[0]
         self.n_features = np.shape(data)[1]
-        self.norm()
+        self.pole = []
+        for i in range(self.n_features):
+            self.pole.append(max(abs(self.data[:, i].min()), abs(self.data[:, i].max())))
 
-        self.data = np.concatenate((np.ones((self.n_samples, 1)), self.data), axis=1)
+        self.data = self.norm(self.data)
         """
         before concatenate, x = [x1, x2, ...]
         >>>data.shape
         >>>(100, 1)
-        
+
         after concatenate, x = [x0, x1, x2, ...]:
         >>>data.shape
         >>>(100, 2)
-        
+
         in such example, data is x axis, label is y axis
         """
+        self.data = np.concatenate((np.ones((self.n_samples, 1)), self.data), axis=1)
+        self.raw_data = np.concatenate((np.ones((self.n_samples, 1)), self.data), axis=1)
 
         if self.draw:
             self.ims = []
@@ -39,7 +44,7 @@ class Liner(object):
             self.ax[0][0].set_ylim(self.label.min()*1.2, self.label.max()*1.2)
             self.fig.set_tight_layout(True)
 
-    def norm(self):
+    def norm(self, data):
         """
         before norm:
         >> data
@@ -58,9 +63,9 @@ class Liner(object):
         all data will fall between [-1, 1]
         """
         for i in range(self.n_features):
-            amax = abs(self.data[:, i].max())
-            amin = abs(self.data[:, i].min())
-            self.data[:, i] /= max(amax, amin) * 1.2
+            data[:, i] /= self.pole[i] * 1.2
+
+        return data
 
     def gradient_descent(self, lr=1e-2, itera=100):
         """
@@ -81,7 +86,7 @@ class Liner(object):
         if self.draw:
             ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
                                             repeat_delay=1000, repeat=False)
-            ani.save('../img/LinerRegression.gif', writer='pillow', fps=1000)
+            # ani.save('../img/LinerRegression.gif', writer='pillow', fps=1000)
             plt.show()
 
     def normal_equations(self):
@@ -123,3 +128,8 @@ if __name__ == '__main__':
                                     bias=100.0)
     model = Liner(x, y, draw=1)
     model.gradient_descent()
+
+    pre = model.predict(model.norm(x))
+    print(pre)
+    print(y)
+

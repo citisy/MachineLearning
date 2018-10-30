@@ -45,7 +45,10 @@ class SVM(object):
         self._class = np.unique(self.label)
         self.n_class = len(self._class)
 
-        self.norm()
+        self.pole = []
+        for i in range(self.n_features):
+            self.pole.append(max(abs(self.data[:, i].min()), abs(self.data[:, i].max())))
+        self.data = self.norm(self.data)
 
         if self.draw:
             self.ims = []
@@ -55,7 +58,7 @@ class SVM(object):
             self.ax[0][0].set_ylim(self.label.min() * 1.2, self.label.max() * 1.2)
             self.fig.set_tight_layout(True)
 
-    def norm(self):
+    def norm(self, data):
         """
         before norm:
         >> data
@@ -74,9 +77,9 @@ class SVM(object):
         all data will fall between [-1, 1]
         """
         for i in range(self.n_features):
-            amax = abs(self.data[:, i].max())
-            amin = abs(self.data[:, i].min())
-            self.data[:, i] /= max(amax, amin) * 1.2
+            data[:, i] /= self.pole[i] * 1.2
+
+        return data
 
     def train(self):
         n = self.n_sample
@@ -468,5 +471,5 @@ if __name__ == '__main__':
 
     x, y = datasets.make_blobs(centers=3)
     model = SVM(x, y, c=0.5, draw=1, kernel='liner')
-    model._1v1()
+    model._1vr()
     # sklearn_pre(model.data, model.label)
