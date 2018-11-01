@@ -29,12 +29,11 @@
 
 ### [KNN.py](Classification/KNN.py)
 
+<img src="img/KNN.png" width="400"></img>
+
 ### [LogisticRegression.py](Classification/LogisticRegression.py)
 
-| LogisticRegression_before | LogisticRegression_after |
-| :----: | :----: |
-|![LogisticRegression_before](img/LogisticRegression_before.png)|![LogisticRegression_after](img/LogisticRegression_after.png)|
-
+<img src="img/LogisticRegression.png" width="400"></img>
 
 ### [NaiveBayes.py](Classification/NaiveBayes.py)
 
@@ -51,4 +50,12 @@
 # Dimensionality_reduction
 ### [LDA.py](Dimensionality_reduction/LDA.py)
 
+| LDA_before | LDA_after |
+| :----: | :----: |
+|![LDA_before](img/LDA_before.png)|![LDA_after](img/LDA_after.png)|
+
 ### [PCA.py](Dimensionality_reduction/PCA.py)
+
+| PCA_before | PCA_after |
+| :----: | :----: |
+|![PCA_before](img/PCA_before.png)|![PCA_after](img/PCA_after.png)|

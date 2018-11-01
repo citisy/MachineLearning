@@ -42,6 +42,9 @@ class NB(object):
             self.dict_[k]['count'] = v
             self.dict_[k]['py'] = v / self.n_samples
         self.n_features = len(self.dict_)
+        self.pole = []
+        for i in range(self.n_feature):
+            self.pole.append(max(abs(self.data[:, i].min()), abs(self.data[:, i].max())))
 
     def norm(self, data):
         """
@@ -62,7 +65,6 @@ class NB(object):
         all data will fall between [-1, 1]
         """
         data = np.array(data, dtype=float)
-        print(data)
         for i in range(self.n_feature):
             data[:, i] /= self.pole[i] * 0.1
 
@@ -72,9 +74,6 @@ class NB(object):
         """
         if the gaussian use without trained, use this method
         """
-        self.pole = []
-        for i in range(self.n_feature):
-            self.pole.append(max(abs(self.data[:, i].min()), abs(self.data[:, i].max())))
         self.data = self.norm(self.data)
         for k in self.dict_.keys():
             mu = np.mean(self.data[self.dict_[k]['index']], axis=0)
@@ -195,7 +194,7 @@ class NB(object):
         z = self.gaussian_predict(np.c_[x.ravel(), y.ravel()])
         z = z.reshape(x.shape)
         # todo: 分界面呈弧形
-        cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF'])
+        cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF', '#AAAAAA'])
         ax.pcolormesh(x, y, z, cmap=cmap_light)
         ax.scatter(self.data[:, 0], self.data[:, 1], c=self.label)
         ax2.set_xlabel('x')
@@ -210,17 +209,17 @@ if __name__ == '__main__':
     from sklearn import datasets
     from sklearn.naive_bayes import GaussianNB  # 高斯预测
 
-    # x, y = datasets.make_blobs(centers=3)
-    # model = NB(x, y)
-    # pre = model.gaussian_predict_(model.norm(x))
-    # acc = np.sum(pre == y)/len(x)
-    # print(acc)
-    # model.show()
-    #
-    # m = GaussianNB().fit(x, y)
-    # pre = m.predict(x)
-    # acc = np.sum(pre == y)/len(x)
-    # print(acc)
+    x, y = datasets.make_blobs(centers=3)
+    model = NB(x, y)
+    pre = model.gaussian_predict_(model.norm(x))
+    acc = np.sum(pre == y)/len(x)
+    print(acc)
+    model.show()
+
+    m = GaussianNB().fit(x, y)
+    pre = m.predict(x)
+    acc = np.sum(pre == y)/len(x)
+    print(acc)
 
     # # 多项式预测
     # from sklearn.naive_bayes import MultinomialNB
@@ -236,16 +235,16 @@ if __name__ == '__main__':
     # acc = np.sum(pre == y)/len(x)
     # print(acc)
 
-    # 伯努利判别
-    from sklearn.naive_bayes import BernoulliNB
-
-    x = np.random.randint(2, size=(6, 100))
-    y = np.array([1, 2, 3, 4, 5, 6])
-    model = NB(x, y)
-    pre = model.bernoulli_predict(x)
-    acc = np.sum(pre == y)/len(x)
-    print(acc)
-    m = BernoulliNB().fit(x, y)
-    pre = m.predict(x)
-    acc = np.sum(pre == y)/len(x)
-    print(acc)
+    # # 伯努利判别
+    # from sklearn.naive_bayes import BernoulliNB
+    #
+    # x = np.random.randint(2, size=(6, 100))
+    # y = np.array([1, 2, 3, 4, 5, 6])
+    # model = NB(x, y)
+    # pre = model.bernoulli_predict(x)
+    # acc = np.sum(pre == y)/len(x)
+    # print(acc)
+    # m = BernoulliNB().fit(x, y)
+    # pre = m.predict(x)
+    # acc = np.sum(pre == y)/len(x)
+    # print(acc)

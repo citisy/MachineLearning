@@ -15,8 +15,8 @@ class Liner(object):
         self.label = np.array(label)
         self.label = np.reshape(self.label, (-1, 1))
         self.draw = draw
-        self.n_samples = np.shape(data)[0]
-        self.n_features = np.shape(data)[1]
+        self.n_samples = self.data.shape[0]
+        self.n_features = self.data.shape[1]
         self.pole = []
         for i in range(self.n_features):
             self.pole.append(max(abs(self.data[:, i].min()), abs(self.data[:, i].max())))
@@ -98,10 +98,10 @@ class Liner(object):
         xTx = xMat.T * xMat
         self.w = xTx.I * (xMat.T * yMat)
         if self.draw:
-            self.show(self.data, self.label)
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1, blit=True,
-                                            repeat_delay=500, repeat=False)
-            # ani.save('img/dbscan.gif', writer='pillow', fps=1000)
+            x = np.linspace(self.data[:, 1].min(), self.data[:, 1].max(), 5).reshape(-1, 1)
+            y = self.predict(x)
+            self.ax[0][0].scatter(self.data[:, 1], self.label, c='b')
+            self.ax[0][0].plot(x, y, c='r')
             plt.show()
 
     def predict(self, data):
@@ -123,13 +123,26 @@ class Liner(object):
 
 if __name__ == '__main__':
     from sklearn import datasets
+    from sklearn.model_selection import train_test_split
 
-    x, y = datasets.make_regression(n_samples=100, n_features=1, random_state=0, noise=4.0,
+    x, y = datasets.make_regression(n_samples=200, n_features=1, random_state=0, noise=4.0,
                                     bias=100.0)
-    model = Liner(x, y, draw=1)
-    model.gradient_descent()
+    y = y.reshape((-1, 1))
 
-    pre = model.predict(model.norm(x))
-    print(pre)
-    print(y)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
 
+    # x_train = list(range(100))
+    # y_train = [0 for _ in range(50)] + [1 for _ in range(50)]
+    # x_train = np.array(x_train)
+    # x_train = x_train.reshape((-1, 1))
+    model1 = Liner(x_train, y_train, draw=1)
+    model1.gradient_descent()
+
+    pre1 = model1.predict(model1.norm(x_test))
+    print(np.linalg.norm(pre1 - y_test))
+
+    # model2 = Liner(x_train, y_train, draw=1)
+    # model2.normal_equations()
+    #
+    # pre2 = model2.predict(model1.norm(x_test))
+    # print(np.linalg.norm(pre2 - y_test))

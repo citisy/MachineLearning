@@ -1,5 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import seaborn as sns
+sns.set(style="white", palette="muted", color_codes=True)
 
 
 class PCA:
@@ -20,8 +23,14 @@ class PCA:
 
 if __name__ == '__main__':
     from sklearn import datasets
-    data = datasets.load_iris()
-    x, y = data.data, data.target
+
+    x, y = datasets.make_blobs(centers=3, n_features=3, n_samples=500)
     transx = PCA(x).transform()
-    plt.scatter(transx[:, 0], transx[:, 1], c=y)
+    fig1, ax1 = plt.subplots()
+    fig2, _ = plt.subplots()
+    ax2 = Axes3D(fig2)
+    ax1.scatter(transx[:, 0], transx[:, 1], c=y)
+    ax2.scatter(x[:, 0], x[:, 1], x[:, 2], c=y)
+    fig1.savefig('../img/PCA_after.png')
+    fig2.savefig('../img/PCA_before.png')
     plt.show()

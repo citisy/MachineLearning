@@ -6,7 +6,6 @@ import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import seaborn as sns
-
 sns.set(style="white", palette="muted", color_codes=True)
 
 
@@ -471,5 +470,7 @@ if __name__ == '__main__':
 
     x, y = datasets.make_blobs(centers=3)
     model = SVM(x, y, c=0.5, draw=1, kernel='liner')
-    model._1vr()
+    model.svc()
+    # model._1vr()
+    # model._1v1()
     # sklearn_pre(model.data, model.label)

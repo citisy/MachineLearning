@@ -4,18 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import collections
 
-"""
-id3
-c4.5
-cart
-"""
-
 
 class DT(object):
     def __init__(self, data, label):
-        self.data = np.array(data)      # data -> [n_samples, n_features]
-        self.label = label
-        self.n_samples = len(self.label)
+        self.data = np.array(data, dtype=float)      # data -> [n_samples, n_features]
+        self.label = np.array(label)
+        self.n_samples = self.label.shape[0]
         dict_ = collections.Counter(self.label)
         self.dict_ = {}
         for (k, v) in dict_.items():

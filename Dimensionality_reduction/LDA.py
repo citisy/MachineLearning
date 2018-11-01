@@ -1,10 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import seaborn as sns
+sns.set(style="white", palette="muted", color_codes=True)
 
 
 class LDA:
-    def __init__(self, data, label, k=2):
-        self.data = np.array(data)  # data -> [150, 4]
+    def __init__(self, data, label, k=2, draw=0):
+        self.data = np.array(data, dtype=float)  # data -> [150, 4]
         self.label = np.array(label)  # label -> [150, 1]
         self.k = k
         self.cl = np.unique(label)  # cl: values -> [0, 1, 2]
@@ -36,8 +39,14 @@ class LDA:
 if __name__ == '__main__':
     from sklearn import datasets
 
-    data = datasets.load_iris()
-    x, y = data.data, data.target
-    transx = LDA(x, y).transform()
-    plt.scatter(transx[:, 0], transx[:, 1], c=y)
+    x, y = datasets.make_blobs(centers=3, n_features=3, n_samples=500)
+
+    transx = LDA(x, y, draw=1).transform()
+    fig1, ax1 = plt.subplots()
+    fig2, _ = plt.subplots()
+    ax2 = Axes3D(fig2)
+    ax1.scatter(transx[:, 0], transx[:, 1], c=y)
+    ax2.scatter(x[:, 0], x[:, 1], x[:, 2], c=y)
+    # fig1.savefig('../img/LDA_after.png')
+    # fig2.savefig('../img/LDA_before.png')
     plt.show()
