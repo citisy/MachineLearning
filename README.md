@@ -27,6 +27,10 @@
 # Classification
 ### [DecisionTree.py](Classification/DecisionTree.py)
 
+| DT_id3 | DT_c45 | DT_cart |
+| :----: | :----: | :----: |
+|![DT_id3](img/DT_id3.png)|![DT_c45](img/DT_c45.png)|![DT_cart](img/DT_cart.png)|
+
 ### [KNN.py](Classification/KNN.py)
 
 <img src="img/KNN.png" width="400"></img>
@@ -45,7 +49,7 @@
 
 | SVM_svc | SVM_1v1 | SVM_1vr |
 | :----: | :----: | :----: |
-|![SVM_svc](img/SVM_svc.gif)|![SVM_1v1](img/SVM_1v1.gif)|![SVM_1vr](img/SVM_1vr.gif)
+|![SVM_svc](img/SVM_svc.gif)|![SVM_1v1](img/SVM_1v1.gif)|![SVM_1vr](img/SVM_1vr.gif)|
 
 # Dimensionality_reduction
 ### [LDA.py](Dimensionality_reduction/LDA.py)
