@@ -8,6 +8,9 @@ sns.set(style="white", palette="muted", color_codes=True)
 
 
 class Logistic(object):
+    """
+    only apply for 2 classes classification.
+    """
     def __init__(self, data, label, draw=0):
         self.data = np.array(data, dtype=float)
         self.label = np.array(label)
@@ -53,7 +56,7 @@ if __name__ == '__main__':
     from sklearn import datasets
     from sklearn.model_selection import train_test_split
 
-    x, y = datasets.make_blobs(n_samples=200, centers=2)    # only apply for 2-classes
+    x, y = datasets.make_blobs(n_samples=200, centers=2)
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
 
     model = Logistic(x_train, y_train, draw=1)

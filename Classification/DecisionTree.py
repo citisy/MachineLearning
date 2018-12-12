@@ -268,22 +268,38 @@ def create_data():
 
 if __name__ == '__main__':
     from sklearn import datasets
+    from sklearn.tree import DecisionTreeClassifier
 
-    data, _ = create_data()
-    x, y = data[:, :-1], data[:, -1:]
-    model = DT(x, y, is_seq=0, method='id3')
-    print(model.dic)
+    # data, _ = create_data()
+    # x, y = data[:, :-1], data[:, -1:]
+    # model = DT(x, y, is_seq=0, method='id3')
+    # print(model.dic)
 
     x, y = datasets.make_blobs(n_samples=500, n_features=2, centers=5)
 
-    model = DT(x, y, is_seq=1, method='id3', max_depth=10,
-               draw=1, is_save=0, save_fn='../img/DT_id3.png')
-    # print(model.dic)
-
-    model = DT(x, y, is_seq=1, method='c45', max_depth=10,
-               draw=1, is_save=0, save_fn='../img/DT_c45.png')
-    # print(model.dic)
+    # model = DT(x, y, is_seq=1, method='id3', max_depth=10,
+    #            draw=1, is_save=0, save_fn='../img/DT_id3.png')
+    # # print(model.dic)
+    #
+    # model = DT(x, y, is_seq=1, method='c45', max_depth=10,
+    #            draw=1, is_save=0, save_fn='../img/DT_c45.png')
+    # # print(model.dic)
 
     model = DT(x, y, is_seq=1, method='cart', max_depth=10,
                draw=1, is_save=0, save_fn='../img/DT_cart.png')
     # print(model.dic)
+
+    model = DecisionTreeClassifier()
+    model.fit(x, y)
+    fig, ax = plt.subplots()
+    x_min, x_max = x[:, 0].min() - 1, x[:, 0].max() + 1
+    y_min, y_max = x[:, 1].min() - 1, x[:, 1].max() + 1
+    xx = np.arange(x_min, x_max, 0.1)
+    yy = np.arange(y_min, y_max, 0.1)
+    xx, yy = np.meshgrid(xx, yy)
+    z = model.predict(np.c_[xx.ravel(), yy.ravel()])
+    z = z.reshape(xx.shape)
+    cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF', '#AAAAAA', '#FFFFFF'])
+    ax.pcolormesh(xx, yy, z, cmap=cmap_light)
+    ax.scatter(x[:, 0], x[:, 1], c=y)
+    plt.show()

@@ -151,9 +151,9 @@ class DBSCAN(cluster):
         etime = time.time()
         print('train completed! time: %s' % str(etime - stime))
         if self.draw:
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
-                                            repeat_delay=500, repeat=False)
-            ani.save('../img/DBSCAN.gif', writer='pillow')
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 / len(self.ims), blit=True,
+                                            repeat_delay=0, repeat=True)
+            # ani.save('../img/DBSCAN.gif', writer='pillow')
             plt.show()
 
     def train_(self):
@@ -226,9 +226,9 @@ class DBSCAN(cluster):
         etime = time.time()
         print('train completed! time: %s' % str(etime - stime))
         if self.draw:
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
-                                            repeat_delay=500, repeat=False)
-            # ani.save('img/DBSCAN.gif', writer='pillow', fps=1000)
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 / len(self.ims), blit=True,
+                                            repeat_delay=0, repeat=True)
+            # ani.save('../img/DBSCAN.gif', writer='pillow')
             plt.show()
 
     def show(self, data, cent_ind):
@@ -245,5 +245,4 @@ if __name__ == '__main__':
     from sklearn.cluster import AgglomerativeClustering
 
     X, y = datasets.make_moons(n_samples=500, noise=0.08)
-    # X, y = datasets.make_blobs(n_samples=100, n_features=2)
     model = DBSCAN(X, draw=1, eps=0.005)

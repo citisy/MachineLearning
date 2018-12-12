@@ -66,8 +66,8 @@ class Kmeans(cluster):
         print('train completed!')
         if self.draw:
             ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 // len(self.ims), blit=True,
-                                            repeat_delay=1000, repeat=False)
-            # ani.save('../img/kmeans.gif', writer='pillow')
+                                            repeat_delay=1000, repeat=True)
+            # ani.save('../img/kmeans.gif', writer='imagemagick')
             plt.show()
 
     # 二维可视化
@@ -84,7 +84,7 @@ class Kmeans(cluster):
 if __name__ == '__main__':
     from sklearn import datasets
 
-    X, y = datasets.make_blobs(n_samples=500, n_features=2)
+    X, y = datasets.make_blobs(n_samples=500, n_features=2, random_state=3)
     model = Kmeans(X, 3, draw=1)
     # print(model.score())
     # y_pred = MiniBatchKMeans(n_clusters=2, batch_size=200, random_state=9).fit_predict(X)

@@ -147,9 +147,9 @@ class SVM(object):
         etime = time.time()
         print('train completed! time: %s' % str(etime - stime))
         if self.draw:
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
-                                            repeat_delay=1000, repeat=False)
-            # ani.save('../img/SVM_svc.gif', writer='pillow')
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=3000 / len(self.ims), blit=True,
+                                            repeat_delay=0, repeat=True)
+            # ani.save('../img/SVM_svc.gif', writer='imagemagick')
             plt.show()
 
     def _1vr(self):
@@ -188,11 +188,12 @@ class SVM(object):
         if self.draw:
             pre = self.predict_1vr(self.data)
 
-            self.show(self.data, pre, self.w, self.b, 0)
+            for _ in range(len(self.ims)):
+                self.show(self.data, pre, self.w, self.b, 0)
 
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
-                                            repeat_delay=1000, repeat=False)
-            # ani.save('../img/SVM_1vr.gif', writer='pillow')
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=3000 / len(self.ims), blit=True,
+                                            repeat_delay=0, repeat=True)
+            # ani.save('../img/SVM_1vr.gif', writer='imagemagick')
             plt.show()
 
     def _1v1(self):
@@ -232,11 +233,12 @@ class SVM(object):
         if self.draw:
             pre = self.predict_1v1(self.data)
 
-            self.show(self.data, pre, self.w, self.b, 0)
+            for _ in range(len(self.ims)):
+                self.show(self.data, pre, self.w, self.b, 0)
 
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
-                                            repeat_delay=1000, repeat=False)
-            # ani.save('../img/SVM_1v1.gif', writer='pillow')
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=3000 / len(self.ims), blit=True,
+                                            repeat_delay=0, repeat=True)
+            # ani.save('../img/SVM_1v1.gif', writer='imagemagick')
             plt.show()
 
     # 判断是否符合kkt条件
@@ -428,13 +430,13 @@ class SVM(object):
         for i in range(len(w)):
             # draw line base on w, b, base line function: y = -(w1*x+b)/w2
             y = -(w[i][0] * x + b[i]) / w[i][1]
-            line1, = ax.plot(x, y)
+            line1, = ax.plot(x, y, c='r')
             im.append(line1)
             if draw_support_line:
                 y1 = -(w[i][0] * x + b[i] + 1) / w[i][1]
                 y2 = -(w[i][0] * x + b[i] - 1) / w[i][1]
-                line2, = ax.plot(x, y1)
-                line3, = ax.plot(x, y2)
+                line2, = ax.plot(x, y1, c='b')
+                line3, = ax.plot(x, y2, c='b')
                 im.append(line2)
                 im.append(line3)
         self.ims.append(im)
@@ -468,9 +470,9 @@ def sklearn_pre(x, y):
 if __name__ == '__main__':
     from sklearn import datasets
 
-    x, y = datasets.make_blobs(centers=3)
+    x, y = datasets.make_blobs(centers=3, random_state=23)
     model = SVM(x, y, c=0.5, draw=1, kernel='liner')
-    model.svc()
+    # model.svc()
     # model._1vr()
-    # model._1v1()
+    model._1v1()
     # sklearn_pre(model.data, model.label)

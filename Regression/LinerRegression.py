@@ -84,9 +84,9 @@ class Liner(object):
             self.w += lr * (xMat.T * (yMat - xMat * self.w))
 
         if self.draw:
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
-                                            repeat_delay=1000, repeat=False)
-            # ani.save('../img/LinerRegression.gif', writer='pillow', fps=1000)
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 / len(self.ims), blit=True,
+                                            repeat_delay=0, repeat=True)
+            ani.save('../img/LinerRegression.gif', writer='imagemagick')
             plt.show()
 
     def normal_equations(self):
@@ -125,8 +125,8 @@ if __name__ == '__main__':
     from sklearn import datasets
     from sklearn.model_selection import train_test_split
 
-    x, y = datasets.make_regression(n_samples=200, n_features=1, random_state=0, noise=4.0,
-                                    bias=100.0)
+    x, y = datasets.make_regression(n_samples=200, n_features=1, noise=4.0,
+                                    bias=100.0, random_state=0)
     y = y.reshape((-1, 1))
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)

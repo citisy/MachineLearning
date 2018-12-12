@@ -77,11 +77,11 @@ class SOM(object):
 
         if self.draw:
             ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 / len(self.ims), blit=True,
-                                            repeat_delay=500, repeat=True)
+                                            repeat_delay=0, repeat=True)
             ani2 = animation.ArtistAnimation(self.fig2, self.ims2, interval=2000 / len(self.ims2), blit=True,
-                                            repeat_delay=1000, repeat=False)
-            ani.save('../img/SOM_before_train.gif', writer='pillow')
-            ani2.save('../img/SOM_after_train.gif', writer='pillow')
+                                            repeat_delay=0, repeat=True)
+            ani.save('../img/SOM_before_train.gif', writer='imagemagick')
+            ani2.save('../img/SOM_after_train.gif', writer='imagemagick')
             plt.show()
 
     def update_lr(self, lr, t, n):
@@ -120,7 +120,7 @@ class SOM(object):
 if __name__ == '__main__':
     from sklearn import datasets
 
-    x, y = datasets.make_blobs(n_samples=500, centers=4, n_features=2)
+    x, y = datasets.make_blobs(n_samples=500, centers=4, n_features=2, random_state=3)
     model = SOM(x, output_size=4, itera=20, draw=1)
     # the num of prediction classes mill be less than output_size
     # pre = model.predict(model.data)
