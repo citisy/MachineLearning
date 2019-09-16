@@ -46,16 +46,16 @@ class Hierarchical(cluster):
             self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
 
         stime = time.time()
-        r = np.zeros((self.n_samples, self.n_samples))
+        distances = np.zeros((self.n_samples, self.n_samples))
         # 两点距离最大为根号2，设为10可视为忽略的点
-        r += 10
+        distances += 10
 
         for i in range(self.n_samples):
             for j in range(i + 1, self.n_samples):
-                r[i][j] = self.get_r(self.data[i], self.data[j])
+                distances[i][j] = self.get_r(self.data[i], self.data[j])
 
         for _ in range(self.n_samples - self.k):
-            min_ind = np.argmin(r)
+            min_ind = np.argmin(distances)
             j = min_ind % self.n_samples
             i = min_ind // self.n_samples
             # 距离最近的簇只保留一个
@@ -65,10 +65,11 @@ class Hierarchical(cluster):
             # 簇内成员距离都为10
             for i in ind_i[0]:
                 for j in ind_j[0]:
-                    r[min(i, j)][max(i, j)] = 10
+                    distances[min(i, j)][max(i, j)] = 10
+
             if self.draw:
                 if _ % 5 == 4:
-                    self.show_(self.data, self.cent_ind)
+                    self.show(self.data, self.cent_ind)
 
         etime = time.time()
         print('train completed! time: %s' % str(etime - stime))
@@ -78,53 +79,7 @@ class Hierarchical(cluster):
             # ani.save('../img/Hierarchical.gif', writer='pillow')
             plt.show()
 
-    def train_(self):  # this method is slower, but the code looks like more beautiful
-        if self.draw:
-            self.ims = []
-            self.col = math.ceil(np.sqrt(self.n_features/2))
-            self.row = math.ceil(self.n_features/2/self.col)
-            self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
-            self.fig.set_tight_layout(True)
-
-        stime = time.time()
-        distances = [[10 for _ in range(self.n_samples)] for __ in
-                     range(self.n_samples)]  # 2-d list fill with 10, shape -> [n_samples, n_samples]
-        index = [[i] for i in range(self.n_samples)]
-
-        for i in range(self.n_samples):
-            for j in range(i + 1, self.n_samples):
-                r = self.get_r(self.data[i], self.data[j])
-                distances[i][j] = r
-                distances[j][i] = r
-
-        for i in range(self.n_samples - self.k):
-            argmin = np.argmin(distances)
-            x = argmin % len(distances)
-            y = argmin // len(distances)
-            index[x] += index[y]
-            for k in index[x]:
-                self.cent_ind[k] = i  # we label the class with data[i]'s index
-            for k in range(len(distances)):
-                if x == k:
-                    continue
-                distances[x][k] = min(distances[x][k], distances[y][k])
-                distances[k][x] = min(distances[k][x], distances[k][y])
-            for k in range(len(distances)):
-                del distances[k][y]
-            del distances[y]
-            del index[y]
-            if self.draw:
-                self.show_(self.data, self.cent_ind)
-
-        etime = time.time()
-        print('train completed! time: %s' % str(etime - stime))
-        if self.draw:
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
-                                            repeat_delay=500, repeat=False)
-            ani.save('../img/Hierarchical.gif', writer='pillow', fps=1000)
-            plt.show()
-
-    def show_(self, data, cent_ind):
+    def show(self, data, cent_ind):
         im = []
         for i in range(self.n_features // 2):
             a = i // self.col
@@ -137,6 +92,7 @@ if __name__ == '__main__':
     from sklearn import datasets
     from sklearn.cluster import AgglomerativeClustering
 
+    np.random.seed(6)
     X, y = datasets.make_moons(n_samples=502, noise=0.08)
     # X, y = datasets.make_blobs(n_samples=100, n_features=4)
     model = Hierarchical(X, 2, draw=1)

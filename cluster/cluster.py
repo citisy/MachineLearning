@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-class cluster(object):
+class cluster:
     def __init__(self, data, k=3, itera=100, draw=0):
         self.data = np.array(data, dtype=float)
         self.k = k
@@ -30,11 +30,13 @@ class cluster(object):
         pass
 
     # 求点与中心点的距离
-    def get_r(self, x1, x2):
+    def get_r(self, x1, x2, method='euc'):
         # 欧氏距离
-        return ((x1 - x2) ** 2).sum()
+        if method == 'euc':
+            return ((x1 - x2) ** 2).sum()
         # 余弦相似度
-        # return -np.dot(x1, x2)/np.sqrt((x1**2).sum()*(x2**2).sum())
+        elif method == 'cos':
+            return -np.dot(x1, x2)/np.sqrt((x1**2).sum()*(x2**2).sum())
 
     def show(self, *args):
         """
