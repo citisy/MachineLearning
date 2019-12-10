@@ -6,22 +6,14 @@
 　(5) 将所有边界点指定到与之对应的核心点的簇总。
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from cluster import cluster
-import time
-import math
-import seaborn as sns
-
-sns.set(style="white", palette="muted", color_codes=True)
+from cluster import *
 
 
 class DBSCAN(cluster):
-    def __init__(self, data, draw=0, eps=0.01, threshold=3):
+    def __init__(self, data, show_img=False, eps=0.01, threshold=3):
         self.eps = eps
         self.threshold = threshold
-        super(DBSCAN, self).__init__(data, draw=draw)
+        super(DBSCAN, self).__init__(data, show_img=show_img)
 
     def norm(self):
         """
@@ -46,7 +38,8 @@ class DBSCAN(cluster):
             amin = abs(self.data[:, i].min())
             self.data[:, i] /= max(amax, amin) * 1.2
 
-    def train(self):
+    @count_time
+    def train(self, **kwargs):
         """
         eg:
             index: list type
@@ -60,19 +53,11 @@ class DBSCAN(cluster):
              u can only use half of list distances
              for changing the code by yourselves, it's very easy(smile).
         """
-        if self.draw:
-            self.ims = []
-            self.col = math.ceil(np.sqrt(self.n_features / 2))
-            self.row = math.ceil(self.n_features / 2 / self.col)
-            self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
-            self.fig.set_tight_layout(True)
-
-        stime = time.time()
         distances = [[10 for _ in range(self.n_samples)] for __ in range(self.n_samples)]
-        index = [[i] for i in range(self.n_samples)]
+        group_list = [{i} for i in range(self.n_samples)]
 
         self.cent_cn = np.zeros(self.n_samples, dtype=int)
-        cent_ind = [[] for _ in range(self.n_samples)]
+        point_index = [[] for _ in range(self.n_samples)]
         for i in range(self.n_samples):
             for j in range(i + 1, self.n_samples):
                 r = self.get_r(self.data[i], self.data[j])
@@ -80,31 +65,30 @@ class DBSCAN(cluster):
                 if r <= self.eps:
                     self.cent_cn[i] += 1
                     self.cent_cn[j] += 1
-                    cent_ind[i].append(j)
+                    point_index[i].append(j)
 
         # core point
         core_point = []
         for i in range(self.n_samples):
             if self.cent_cn[i] >= self.threshold:
                 core_point.append(i)
-                if len(cent_ind[i]) == 0:
-                    continue
 
-                for j in cent_ind[i]:
+                for j in point_index[i]:
                     x = y = -1
-                    for k in range(len(index)):  # find data[i] and data[j] in distances' index
-                        if i in index[k]:
+                    for k in range(len(group_list)):  # find data[i] and data[j] in eps
+                        if i in group_list[k]:
                             x = k
-                        if j in index[k]:
+                        if j in group_list[k]:
                             y = k
 
                     if all([x == y, x != -1, y != -1]):  # x and y in the same class
                         continue
 
-                    index[x] += index[y]
-                    for k in index[x]:
-                        self.cent_ind[k] = i  # we label the class with data[i]'s index
+                    group_list[x] |= group_list[y]
+                    for k in group_list[x]:
+                        self.point_index[k] = i  # we label the class with data[i]'s index
 
+                    # update distances mapping
                     for k in range(len(distances)):
                         if x == k:
                             continue
@@ -114,28 +98,29 @@ class DBSCAN(cluster):
                         del distances[k][y]
 
                     del distances[y]
-                    del index[y]
+                    del group_list[y]
 
-                    if self.draw:
-                        self.show(self.data, self.cent_ind)
+                    self.img_collections(self.data, self.point_index)
 
         # border point
         for i in range(self.n_samples):
             if 0 < self.cent_cn[i] < self.threshold:
                 x = -1
-                for k in range(len(index)):
-                    if i in index[k]:
+                for k in range(len(group_list)):
+                    if i in group_list[k]:
                         x = k
-                if x != -1 and len(index[x]) > 1:  # it is core point class
+
+                if x != -1 and len(group_list[x]) > 1:  # it is core point class
                     continue
+
                 argsort = np.argsort(distances[x])  # sort by distances to other class
                 j = 0
-                while j < len(index):
+                while j < len(group_list):
                     y = argsort[j]
-                    if len(index[y]) > 1:  # find the core point class
-                        index[x] += index[y]
-                        for k in index[x]:
-                            self.cent_ind[k] = i
+                    if len(group_list[y]) > 1:  # find the core point class
+                        group_list[x] |= group_list[y]
+                        for k in group_list[x]:
+                            self.point_index[k] = i
 
                         for k in range(len(distances)):
                             distances[x][k] = min(distances[x][k], distances[y][k])
@@ -144,35 +129,22 @@ class DBSCAN(cluster):
                             del distances[k][y]
 
                         del distances[y]
-                        del index[y]
+                        del group_list[y]
                         break
                     j += 1
-        if self.draw:
-            self.show(self.data, self.cent_ind)
+
+        self.img_collections(self.data, self.point_index)
 
         # noise point
         for i in range(self.n_samples):
             if self.cent_cn[i] == 0:
-                self.cent_ind[i] = -1
-        if self.draw:
-            self.show(self.data, self.cent_ind)
+                self.point_index[i] = -1
 
-        etime = time.time()
-        print('train completed! time: %s' % str(etime - stime))
-        if self.draw:
-            print(len(self.ims))
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 / len(self.ims), blit=True,
-                                            repeat_delay=0, repeat=True)
-            ani.save('../img/DBSCAN.gif', writer='imagemagick')
-            plt.show()
+        self.img_collections(self.data, self.point_index)
 
-    def show(self, data, cent_ind):
-        im = []
-        for i in range(self.n_features // 2):
-            a = i // self.col
-            b = i % self.col
-            im.append(self.ax[a][b].scatter(data[:, i], data[:, i + 1], c=cent_ind, animated=True))
-        self.ims.append(im)
+        self.show_gif(kwargs.get('img_save_path'))
+
+        return self.point_index
 
 
 if __name__ == '__main__':
@@ -181,4 +153,6 @@ if __name__ == '__main__':
 
     np.random.seed(6)
     X, y = datasets.make_moons(n_samples=500, noise=0.08)
-    model = DBSCAN(X, draw=1, eps=0.01)
+    model = DBSCAN(X, show_img=True, eps=0.01)
+    model.train()
+    # model.train(img_save_path='../img/kmeans.gif')

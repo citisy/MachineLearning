@@ -5,14 +5,8 @@
 　(4) 重复(2)、(3)，直到所有类最后合并成一类
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from cluster import cluster
-import time
-import math
-import seaborn as sns
-sns.set(style="white", palette="muted", color_codes=True)
+from cluster import *
+
 
 class Hierarchical(cluster):
     def norm(self):
@@ -38,16 +32,10 @@ class Hierarchical(cluster):
             amin = abs(self.data[:, i].min())
             self.data[:, i] /= max(amax, amin) * 1.2
 
-    def train(self):
-        if self.draw:
-            self.ims = []
-            self.col = math.ceil(np.sqrt(self.n_features/2))
-            self.row = math.ceil(self.n_features/2/self.col)
-            self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
-
-        stime = time.time()
+    @count_time
+    def train(self, **kwargs):
         distances = np.zeros((self.n_samples, self.n_samples))
-        # 两点距离最大为根号2，设为10可视为忽略的点
+        # 两点距离最大为根号2，设为10可视为无限远，即为忽略的点
         distances += 10
 
         for i in range(self.n_samples):
@@ -58,34 +46,25 @@ class Hierarchical(cluster):
             min_ind = np.argmin(distances)
             j = min_ind % self.n_samples
             i = min_ind // self.n_samples
+
+            # 找簇
+            ind_j = np.where(self.point_index == self.point_index[j])
+            ind_i = np.where(self.point_index == self.point_index[i])
+
             # 距离最近的簇只保留一个
-            ind_j = np.where(self.cent_ind == self.cent_ind[j])
-            ind_i = np.where(self.cent_ind == self.cent_ind[i])
-            self.cent_ind[ind_j] = self.cent_ind[i]
+            self.point_index[ind_j] = self.point_index[i]
+
             # 簇内成员距离都为10
             for i in ind_i[0]:
                 for j in ind_j[0]:
                     distances[min(i, j)][max(i, j)] = 10
 
-            if self.draw:
-                if _ % 5 == 4:
-                    self.show(self.data, self.cent_ind)
+            if _ % 5 == 4:
+                self.img_collections(self.data, self.point_index)
 
-        etime = time.time()
-        print('train completed! time: %s' % str(etime - stime))
-        if self.draw:
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 / len(self.ims), blit=True,
-                                            repeat_delay=1000, repeat=False)
-            # ani.save('../img/Hierarchical.gif', writer='pillow')
-            plt.show()
+        self.show_gif(kwargs.get('img_save_path'))
 
-    def show(self, data, cent_ind):
-        im = []
-        for i in range(self.n_features // 2):
-            a = i // self.col
-            b = i % self.col
-            im.append(self.ax[a][b].scatter(data[:, i], data[:, i + 1], c=cent_ind, animated=True))
-        self.ims.append(im)
+        return self.point_index
 
 
 if __name__ == '__main__':
@@ -95,5 +74,9 @@ if __name__ == '__main__':
     np.random.seed(6)
     X, y = datasets.make_moons(n_samples=502, noise=0.08)
     # X, y = datasets.make_blobs(n_samples=100, n_features=4)
-    model = Hierarchical(X, 2, draw=1)
+
+    model = Hierarchical(X, 2, show_img=True)
+    model.train()
+    # model.train(img_save_path='../img/Hierarchical.gif')
+
     # model = AgglomerativeClustering(n_clusters=2).fit(X)

@@ -11,11 +11,12 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import math
 import seaborn as sns
+
 sns.set(style="white", palette="muted", color_codes=True)
 
 
 class SOM(object):
-    def __init__(self, data, lr=1, itera=10, batch_size=10, output_size=2, draw=0):
+    def __init__(self, data, lr=1, itera=10, batch_size=10, output_size=2, show_img=False):
         """
         :param data: input data
                     size -> [n_sample, input_size], input_size -> num of features
@@ -30,11 +31,24 @@ class SOM(object):
         self.itera = itera
         self.batch_size = batch_size
         self.output_size = output_size
-        self.draw = draw
+        self.show_img = show_img
         self.n_sample = self.data.shape[0]
         self.intput_size = self.data.shape[1]
         self.w = np.random.rand(self.output_size, self.intput_size)
         self.output = np.zeros(self.n_sample)
+
+        if self.show_img:
+            self.col = math.ceil(np.sqrt(self.intput_size / 2))
+            self.row = math.ceil(self.intput_size / 2 / self.col)
+
+            self.ims = []
+            self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
+            self.fig.set_tight_layout(True)
+
+            self.ims2 = []
+            self.fig2, self.ax2 = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
+            self.fig2.set_tight_layout(True)
+
         self.norm(self.data)
         self.train()
 
@@ -47,24 +61,11 @@ class SOM(object):
 
         return data
 
-    def train(self):
-        if self.draw:
-            self.col = math.ceil(np.sqrt(self.intput_size / 2))
-            self.row = math.ceil(self.intput_size / 2 / self.col)
-
-            self.ims = []
-            self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
-            self.fig.set_tight_layout(True)
-
-            self.ims2 = []
-            self.fig2, self.ax2 = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
-            self.fig2.set_tight_layout(True)
-
+    def train(self, **kwargs):
         t = 0
         for i in range(self.itera):
-            if self.draw:
-                cent_ind = self.predict(self.data, self.w)
-                self.show(self.data, cent_ind)
+            self.img_collections(self.data, self.w)
+
             n = self.getn(t)
             for j in range(self.n_sample):
                 self.w = self.norm(self.w)
@@ -73,22 +74,16 @@ class SOM(object):
                 neighbor = self.get_neighbor(argmax, n)
                 for k, v in neighbor.items():
                     self.w[k] += self.update_lr(self.lr, t, v) * (self.data[j] - self.w[k])
+
             t += 1
 
-        if self.draw:
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 / len(self.ims), blit=True,
-                                            repeat_delay=0, repeat=True)
-            ani2 = animation.ArtistAnimation(self.fig2, self.ims2, interval=2000 / len(self.ims2), blit=True,
-                                            repeat_delay=0, repeat=True)
-            ani.save('../img/SOM_before_train.gif', writer='imagemagick')
-            ani2.save('../img/SOM_after_train.gif', writer='imagemagick')
-            plt.show()
+        self.show_gif(kwargs.get('img1_save_path'), kwargs.get('img2_save_path'))
 
     def update_lr(self, lr, t, n):
         return lr * np.exp(-(n * self.output_size)) / (t + 1)
 
     def getn(self, t):
-        return (1 - t / self.itera)
+        return 1 - t / self.itera
 
     def get_neighbor(self, i, n):
         neighbor = {}
@@ -102,26 +97,48 @@ class SOM(object):
         test_data = np.array(data)
         test_data = self.norm(test_data)
         d = np.matmul(w, test_data.T)
-        cent_ind = np.argmax(d, axis=0)
-        return cent_ind
+        point_index = np.argmax(d, axis=0)
+        return point_index
 
-    def show(self, data, cent_ind):
-        im = []
-        im2 = []
-        for i in range(self.intput_size // 2):
-            a = i // self.col
-            b = i % self.col
-            im.append(self.ax[a][b].scatter(data[:, i], data[:, i + 1], c=cent_ind, animated=True))
-            im2.append(self.ax2[a][b].scatter(self.raw_data[:, i], self.raw_data[:, i + 1], c=cent_ind, animated=True))
-        self.ims.append(im)
-        self.ims2.append(im2)
+    def img_collections(self, data, w):
+        if self.show_img:
+            point_index = self.predict(data, w)
+            im = []
+            im2 = []
+            for i in range(self.intput_size // 2):
+                a = i // self.col
+                b = i % self.col
+                im.append(self.ax[a][b].scatter(data[:, i], data[:, i + 1], c=point_index, animated=True))
+                im2.append(self.ax2[a][b].scatter(self.raw_data[:, i], self.raw_data[:, i + 1],
+                                                  c=point_index, animated=True))
+
+            self.ims.append(im)
+            self.ims2.append(im2)
+
+    def show_gif(self, img1_save_path, img2_save_path):
+        if self.show_img:
+            ani = animation.ArtistAnimation(self.fig, self.ims, interval=2000 / len(self.ims), blit=True,
+                                            repeat_delay=0, repeat=True)
+            ani2 = animation.ArtistAnimation(self.fig2, self.ims2, interval=2000 / len(self.ims2), blit=True,
+                                             repeat_delay=0, repeat=True)
+            if img1_save_path is not None:
+                ani.save(img1_save_path, writer='imagemagick')
+
+            if img2_save_path is not None:
+                ani2.save(img2_save_path, writer='imagemagick')
+
+            plt.show()
 
 
 if __name__ == '__main__':
     from sklearn import datasets
 
-    x, y = datasets.make_blobs(n_samples=500, centers=4, n_features=2, random_state=3)
-    model = SOM(x, output_size=4, itera=20, draw=1)
+    np.random.seed(7)
+    x, y = datasets.make_blobs(n_samples=500, centers=4, n_features=2)
+    model = SOM(x, output_size=4, itera=20, show_img=True)
+    model.train()
+    # model.train(img1_save_path='../img/SOM_before_train.gif', img2_save_path='../img/SOM_after_train.gif')
+
     # the num of prediction classes mill be less than output_size
     # pre = model.predict(model.data)
     # model.show()
