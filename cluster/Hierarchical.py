@@ -60,23 +60,28 @@ class Hierarchical(cluster):
                     distances[min(i, j)][max(i, j)] = 10
 
             if _ % 5 == 4:
-                self.img_collections(self.data, self.point_index)
+                self.picture_collections(self.data, self.point_index)
 
-        self.show_gif(kwargs.get('img_save_path'))
+        self.show_ani(kwargs.get('img_save_path'))
 
         return self.point_index
 
 
-if __name__ == '__main__':
-    from sklearn import datasets
+def sklearn_hierarchical(x):
     from sklearn.cluster import AgglomerativeClustering
 
-    np.random.seed(6)
-    X, y = datasets.make_moons(n_samples=502, noise=0.08)
-    # X, y = datasets.make_blobs(n_samples=100, n_features=4)
+    y_pred = AgglomerativeClustering(n_clusters=2).fit(x)
 
-    model = Hierarchical(X, 2, show_img=True)
+    plt.scatter(x[:, 0], x[:, 1], c=y_pred)
+    plt.show()
+
+
+if __name__ == '__main__':
+    from sklearn.datasets import make_moons as make_data
+
+    np.random.seed(6)
+    x, y = make_data(n_samples=502, noise=0.08)
+
+    model = Hierarchical(x, 2, show_img=True)
     model.train()
     # model.train(img_save_path='../img/Hierarchical.gif')
-
-    # model = AgglomerativeClustering(n_clusters=2).fit(X)

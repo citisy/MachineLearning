@@ -1,36 +1,45 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 import math
 import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import seaborn as sns
+
 sns.set(style="white", palette="muted", color_codes=True)
+
+svc = 0
+_1vr = 1
+_1v1 = 2
+
+liner = 0
+rbf = 1
+polynomial = 2
 
 
 class SVM(object):
-    def __init__(self, data, label, c=1.0, tol=1e-3, max_iter=10, kernel='liner', draw=0,
+    def __init__(self, data, label, c=1.0, tol=1e-3, max_iter=10, kernel=liner, method=svc, draw=False,
                  gamma=None, r=None, d=None):
         """
         Parameters:
+            label:
+                -1 or +1
             c:
                 对不在界内的惩罚因子
             tol:
                 容忍极限值
-            itera:
+            max_iter:
                 最大迭代次数
             kernel:
-                'liner' -> x * x'
-                'rbf' -> exp(-gamma(||x - x'||^2))
-                'polynomial' -> gamma(x * x' + r)^d
-            multi_class:
+                liner -> x * x'
+                rbf -> exp(-gamma(||x - x'||^2))
+                polynomial -> gamma(x * x' + r)^d
+            method:
                 0 -> normal classification
                 1 -> 1vr classification
                 2 -> 1v1 classification
         """
         self.data = np.array(data)
-        self.label = np.array(label)  # 数据标签，分为-1和+1
+        self.label = np.array(label)
         self.c = c
         self.tol = tol
         self.max_iter = max_iter
@@ -266,11 +275,11 @@ class SVM(object):
         return True
 
     def __kernel(self, i, j):
-        if self.kernel == 'liner':
+        if self.kernel == liner:
             return np.matmul(self.__data[i], self.__data[j].T)
-        if self.kernel == 'rbf':
+        if self.kernel == rbf:
             return np.exp(-self.gamma * np.linalg.norm(self.__data[i] - self.__data[j]))
-        if self.kernel == 'polynomial':
+        if self.kernel == polynomial:
             return self.gamma(np.matmul(self.__data, self.__data[j].T) + self.r) ^ self.d
 
     def getE(self, i):
@@ -299,7 +308,6 @@ class SVM(object):
             x = [x1, x2]
             平面(二维为直线)簇方程：g(x) = w * x + b -> w1x1 + w2x2 + b
             中心直线方程：g(x) = 0
-        :return:
         """
         w = 0
         for i in range(self.n_sample):
@@ -471,7 +479,7 @@ if __name__ == '__main__':
     from sklearn import datasets
 
     x, y = datasets.make_blobs(centers=3, random_state=23)
-    model = SVM(x, y, c=0.5, draw=1, kernel='liner')
+    model = SVM(x, y, c=0.5, draw=True, kernel=liner)
     # model.svc()
     # model._1vr()
     model._1v1()

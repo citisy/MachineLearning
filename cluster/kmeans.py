@@ -10,7 +10,7 @@ from cluster import *
 
 class Kmeans(cluster):
     def norm(self):
-        self.cent = np.zeros((self.k, self.n_features))     # 中心点集
+        self.cent = np.zeros((self.k, self.n_features))  # 中心点集
 
         for i in range(self.n_features):
             amax = self.data[:, i].max()
@@ -61,13 +61,13 @@ class Kmeans(cluster):
 
             self.cent = new_cent
 
-            self.img_collections(self.data, self.point_index, cent=self.cent)
+            self.picture_collections(self.data, self.point_index, cent=self.cent)
 
-        self.show_gif(kwargs.get('img_save_path'))
+        self.show_ani(kwargs.get('img_save_path'))
 
         return self.point_index
 
-    def img_collections(self, data, point_index, **kwargs):
+    def picture_collections(self, data, point_index, **kwargs):
         if not self.show_img:
             return
 
@@ -85,14 +85,39 @@ class Kmeans(cluster):
 
         self.ims.append(im)
 
+    def score(self):
+        # Calinski-Harabasz score
+        # 簇间协方差的迹
+        bk = np.trace(np.cov(self.cent, rowvar=False))
+        # 簇内协方差的迹
+        cent_ = []
+        wk = 0
+        for i in range(self.k):
+            for j in range(self.n_samples):
+                if self.point_index[j] == i:
+                    cent_.append(self.data[j])
+            wk += np.trace(np.cov(cent_, rowvar=False))
+        return bk * (self.n_samples - self.k) / (wk * (self.k - 1))
+
+
+def sklearn_kmeans(x, k):
+    from sklearn.cluster import KMeans, MiniBatchKMeans
+
+    # y_pred = KMeans(n_clusters=k).fit_predict(x)
+    y_pred = MiniBatchKMeans(n_clusters=k, batch_size=200).fit_predict(x)
+
+    plt.scatter(x[:, 0], x[:, 1], c=y_pred)
+    plt.show()
+
 
 if __name__ == '__main__':
-    from sklearn import datasets
+    from sklearn.datasets import make_blobs as make_data
 
-    X, y = datasets.make_blobs(n_samples=500, n_features=2, random_state=3)
-    model = Kmeans(X, 3, show_img=True)
+    np.random.seed(6)
+    k = 3
+    x, _ = make_data(n_samples=500, n_features=2, centers=k)
+
+    model = Kmeans(x, k, show_img=True)
     model.train()
     # model.train(img_save_path='../img/kmeans.gif')
-
     # print(model.score())
-    # y_pred = MiniBatchKMeans(n_clusters=2, batch_size=200, random_state=9).fit_predict(X)

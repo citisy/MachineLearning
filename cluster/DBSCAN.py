@@ -100,7 +100,7 @@ class DBSCAN(cluster):
                     del distances[y]
                     del group_list[y]
 
-                    self.img_collections(self.data, self.point_index)
+                    self.picture_collections(self.data, self.point_index)
 
         # border point
         for i in range(self.n_samples):
@@ -133,26 +133,36 @@ class DBSCAN(cluster):
                         break
                     j += 1
 
-        self.img_collections(self.data, self.point_index)
+        self.picture_collections(self.data, self.point_index)
 
         # noise point
         for i in range(self.n_samples):
             if self.cent_cn[i] == 0:
                 self.point_index[i] = -1
 
-        self.img_collections(self.data, self.point_index)
+        self.picture_collections(self.data, self.point_index)
 
-        self.show_gif(kwargs.get('img_save_path'))
+        self.show_ani(kwargs.get('img_save_path'))
 
         return self.point_index
 
 
+def sklearn_DBSCAN(x, eps, threshold):
+    from sklearn.cluster import DBSCAN
+
+    y_pred = DBSCAN(eps=eps, min_samples=threshold).fit(x)
+
+    plt.scatter(x[:, 0], x[:, 1], c=y_pred)
+    plt.show()
+
+
 if __name__ == '__main__':
-    from sklearn import datasets
-    from sklearn.cluster import AgglomerativeClustering
+    from sklearn.datasets import make_moons as make_data
 
     np.random.seed(6)
-    X, y = datasets.make_moons(n_samples=500, noise=0.08)
-    model = DBSCAN(X, show_img=True, eps=0.01)
+    x, y = make_data(n_samples=500, noise=0.08)
+
+    eps, threshold = 0.01, 3
+    model = DBSCAN(x, show_img=True, eps=eps, threshold=threshold)
     model.train()
     # model.train(img_save_path='../img/kmeans.gif')

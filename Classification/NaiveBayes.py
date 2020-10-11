@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 import collections
 import matplotlib.pyplot as plt
@@ -12,7 +10,6 @@ class NB(object):
         """
         :param data:
         :param label:
-        :param rules: data每一个维度的规则
         -----------
         Attributes:
             dict_: dict, shape(n_samples)

@@ -8,15 +8,19 @@ import seaborn as sns
 sns.set(style="white", palette="muted", color_codes=True)
 
 
-def count_time(train_func):
-    def func(*args, **kwargs):
-        st = time.time()
-        r = train_func(*args, **kwargs)
-        et = time.time()
-        print('train completed! time: %s' % str(et - st))
-        return r
+def count_time(output='train complete!'):
+    def wrap(train_func):
+        def wrap2(*args, **kwargs):
+            st = time.time()
+            r = train_func(*args, **kwargs)
+            et = time.time()
+            t = et - st
+            print(f'{output} time: {t}')
+            return r
 
-    return func
+        return wrap2
+
+    return wrap
 
 
 class cluster:
@@ -59,7 +63,7 @@ class cluster:
         elif method == 'cos':
             return -np.dot(x1, x2) / np.sqrt((x1 ** 2).sum() * (x2 ** 2).sum())
 
-    def img_collections(self, data, point_index, **kwargs):
+    def picture_collections(self, data, point_index, **kwargs):
         """
         Visualization of algorithms.
         """
@@ -74,7 +78,7 @@ class cluster:
 
         self.ims.append(im)
 
-    def show_gif(self, img_save_path):
+    def show_ani(self, img_save_path):
         if self.show_img:
             ani = animation.ArtistAnimation(self.fig, self.ims, interval=1000 // len(self.ims), blit=True,
                                             repeat_delay=1000, repeat=False)
@@ -85,15 +89,4 @@ class cluster:
             plt.show()
 
     def score(self):
-        # Calinski-Harabasz score
-        # 簇间协方差的迹
-        bk = np.trace(np.cov(self.cent, rowvar=False))
-        # 簇内协方差的迹
-        cent_ = []
-        wk = 0
-        for i in range(self.k):
-            for j in range(self.n_samples):
-                if self.point_index[j] == i:
-                    cent_.append(self.data[j])
-            wk += np.trace(np.cov(cent_, rowvar=False))
-        return bk * (self.n_samples - self.k) / (wk * (self.k - 1))
+        pass
