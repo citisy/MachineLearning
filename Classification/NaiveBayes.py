@@ -1,247 +1,298 @@
-import numpy as np
+from utils import *
 import collections
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
 from mpl_toolkits.mplot3d import Axes3D
+from tqdm import tqdm
+
+
+class MyPainter(Painter):
+    def draw_GNfunc(self, dic, img_save_path=None):
+        fig = plt.figure()
+        for i in range(self.n_features // 2):
+            a = i // self.col
+            b = i % self.col
+
+            ax3d = fig.add_subplot(projection='3d')
+
+            ax3d.set_xlabel('x')
+            ax3d.set_ylabel('y')
+            ax3d.set_zlabel('z')
+
+            for k in dic.keys():  # 作二维高斯函数的等高线和3d图像
+                x = np.arange(dic[k]['mu'][i] - 3, dic[k]['mu'][i] + 3, 0.1)
+                y = np.arange(dic[k]['mu'][i + 1] - 3, dic[k]['mu'][i + 1] + 3, 0.1)
+                x, y = np.meshgrid(x, y)
+                d = np.linalg.det(dic[k]['sigma'])
+                z = np.exp(
+                    -0.5 * ((x - dic[k]['mu'][0]) ** 2 + (y - dic[k]['mu'][1]) ** 2) / d ** 2) / np.sqrt(
+                    2 * np.pi * d)
+
+                # 等高线
+                cs = self.ax[a][b].contour(x, y, z)
+                self.ax[a][b].clabel(cs, inline=1, fontsize=10)
+
+                ax3d.plot_surface(x, y, z, rstride=1, cstride=1, cmap='rainbow')
+
+        if img_save_path:
+            fig.savefig(img_save_path)
 
 
 class NB(object):
-    def __init__(self, data, label):
-        """
-        :param data:
-        :param label:
-        -----------
-        Attributes:
-            dict_: dict, shape(n_samples)
-                general:
-                    'index':
-                    'count':
-                    'py':
-                    'pyx':
-                gaussian:
-                    'mu':
-                    'sigma':
-                    'pyx':
-                multinomial:
-                    'phi':
-                    'n_xi':
-        """
-        self.data = np.array(data, dtype=float)
-        self.label = np.array(label)
-        self.n_samples = self.data.shape[0]
-        self.n_feature = self.data.shape[1]
-        self.n_i = len(np.unique(self.data))
-        dict_ = collections.Counter(self.label)
-        self.dict_ = {}
-        for (k, v) in dict_.items():
-            self.dict_[k] = {}
-            self.dict_[k]['index'] = np.where(self.label == k)
-            self.dict_[k]['count'] = v
-            self.dict_[k]['py'] = v / self.n_samples
-        self.n_features = len(self.dict_)
-        self.pole = []
-        for i in range(self.n_feature):
-            self.pole.append(max(abs(self.data[:, i].min()), abs(self.data[:, i].max())))
+    def __init__(self, n_feature=None, show_img=False):
+        self.show_img = show_img
+        if self.show_img:
+            self.painter = MyPainter(n_feature)
 
-    def norm(self, data):
-        """
-        before norm:
-        >> data
-        >>[[-3.62194721 -5.49173113]
-         [-3.23435367 -4.67226512]
-         [-1.58990744 -9.87007247]
-         [ 1.95358937 -1.92006285]
-         [ 2.68055418 -1.53837307]]
-        after norm
-        >>data
-        >>[[-0.83333333 -0.46366859]
-         [-0.74415627 -0.39448082]
-         [-0.36580402 -0.83333333]
-         [ 0.44947953 -0.16211151]
-         [ 0.61673874 -0.12988532]]
-        all data will fall between [-1, 1]
-        """
+    def fit(self, data, label):
         data = np.array(data, dtype=float)
-        for i in range(self.n_feature):
-            data[:, i] /= self.pole[i] * 0.1
+        label = np.array(label)
 
-        return data
+        counter = collections.Counter(label)
 
-    def gaussian_predict_(self, data):
-        """
-        if the gaussian use without trained, use this method
-        """
-        self.data = self.norm(self.data)
-        for k in self.dict_.keys():
-            mu = np.mean(self.data[self.dict_[k]['index']], axis=0)
-            sigma = np.mat(np.cov(self.data[self.dict_[k]['index']], rowvar=False))
-            self.dict_[k]['mu'] = mu
-            self.dict_[k]['sigma'] = sigma
-        pre = self.gaussian_predict(data)
+        return data, label, counter
+
+    def predict(self, x):
+        pass
+
+
+class Gaussian(NB):
+    def fit(self, data, label, img_save_path=None, img_save_path2=None):
+        n_samples = data.shape[0]
+
+        data, label, counter = super(Gaussian, self).fit(data, label)
+
+        dic = {}
+        for k, v in counter.items():  # 计算先验概率
+            dic[k] = {}
+            dic[k]['x'] = data[np.where(label == k)]
+            dic[k]['py'] = v / n_samples
+
+        for k in dic.keys():
+            a = dic[k]['x']
+            mu = np.mean(a, axis=0)
+            # 无偏估计：cov = var * n / (n - 1)
+            sigma = np.diagflat(np.var(a, axis=0) * len(a) / (len(a) - 1))
+            dic[k]['mu'] = mu
+            dic[k]['sigma'] = sigma
+
+        self.dic = dic
+
+        if self.show_img:
+            self.painter.draw_GNfunc(self.dic, img_save_path2)
+            self.painter.show_pic(data, label, self.predict, img_save_path)
+            self.painter.show()
+
+    def predict(self, x):
+        x = np.array(x, dtype=float)
+        n_test = x.shape[0]
+        n_features = x.shape[1]
+
+        pre = np.zeros(n_test, dtype=int)
+
+        for a in tqdm(range(n_test)):
+            cache = []
+            for k in self.dic.keys():
+                delta = x[a] - self.dic[k]['mu']
+                sigma = self.dic[k]['sigma']
+                pxy = (np.exp(-0.5 * np.matmul(np.matmul(delta.T, np.linalg.inv(sigma)), delta))
+                       / np.sqrt((2 * np.pi) ** n_features * np.linalg.det(sigma)))
+
+                cache.append((k, pxy * self.dic[k]['py']))
+
+            pre[a] = max(cache, key=lambda x: x[1])[0]
+
         return pre
 
-    # 高斯判别
-    def gaussian_predict(self, data):
-        x = np.array(data)
-        n_sample = len(x)
-        pre = np.zeros(n_sample, dtype=int)
-        for j in range(n_sample):
-            for k in self.dict_.keys():
-                delta = x[j] - self.dict_[k]['mu']
-                pxy = np.exp(-0.5 * np.matmul(np.matmul(delta.T, self.dict_[k]['sigma'].I), delta)) \
-                      / np.sqrt(2 * np.pi * np.linalg.det(self.dict_[k]['sigma']))
-                self.dict_[k]['pyx'] = pxy * self.dict_[k]['py']
-            # pyx一定大于0，初始赋-1就是无穷小值了
-            max = -1
-            for k in self.dict_.keys():
-                b = self.dict_[k]['pyx']
-                if b > max:
-                    max = b
-                    max_k = k
-            pre[j] = max_k
+
+class Multinomial(NB):
+    def fit(self, data, label, alpha=1):
+        self.alpha = alpha
+
+        n_samples = data.shape[0]
+        n_features = data.shape[1]
+
+        data, label, counter = super(Multinomial, self).fit(data, label)
+
+        dic = {}
+        for k, v in counter.items():  # 计算先验概率
+            dic[k] = {}
+            dic[k]['x'] = data[np.where(label == k)]
+            dic[k]['ny'] = v
+            dic[k]['py'] = np.log((v + self.alpha) / (n_samples + self.alpha * len(counter)))
+
+        self.dic = dic
+        self.sj = [len(np.unique(data[:, i])) for i in range(n_features)]
+
+    def predict(self, x):
+        x = np.array(x, dtype=float)
+        n_test = x.shape[0]
+
+        pre = np.zeros(n_test, dtype=int)
+
+        for a in tqdm(range(n_test)):
+            cache = []
+
+            for k in self.dic.keys():
+                pxy = 0
+                ny = self.dic[k]['ny']
+
+                for i, kx in enumerate(x[a]):
+                    pxy += self.get_pxy(k, i, kx, ny)
+
+                cache.append((k, pxy + self.dic[k]['py']))
+
+            pre[a] = max(cache, key=lambda x: x[1])[0]
+
         return pre
 
-    # 多项式判别
-    # 加入了拉普拉斯平滑，防止分子为0的情况
-    def multinomial_predict(self, x, alpha=1):
-        n_sample = len(x)
-        n_feature = len(self.data[0])
-        pre = np.zeros(n_sample, dtype=int)
-        for a in range(n_sample):
-            dict_ = collections.Counter(x[a])
-            for k in self.dict_.keys():
-                self.dict_[k]['phi'] = []
-                self.dict_[k]['n_xi'] = []
-                # todo: 这种计算每个类别的数量并不严谨，因为并不是每个类别的每一列都是相等的，
-                # 但这里传进来的数据是规整的，所以姑且先用这种简易的的做法
-                ny = n_feature * self.dict_[k]['count']
-                for kx, vx in dict_.items():
-                    nyi = np.sum(self.data[self.dict_[k]['index']] == kx)
-                    self.dict_[k]['phi'].append((nyi + alpha) / (ny + self.n_i * alpha))
-                    self.dict_[k]['n_xi'].append(vx)
-                pxy = 1
-                for i, j in zip(self.dict_[k]['phi'], self.dict_[k]['n_xi']):
-                    pxy *= np.power(i, j)
-                self.dict_[k]['pyx'] = pxy * self.dict_[k]['py']
-            max = -1
-            for k in self.dict_.keys():
-                b = self.dict_[k]['pyx']
-                if b > max:
-                    max = b
-                    max_k = k
-            pre[a] = max_k
-        return pre
+    def get_pxy(self, k, i, kx, ny):
+        nxy = np.sum(self.dic[k]['x'][:, i] == kx)
+        return np.log((nxy + self.alpha) / (ny + self.sj[i] * self.alpha))  # 拉普拉斯平滑
 
-    # 伯努利判别，输入值为二值，非真即假
-    # 文本分类中的意义：1代表单词有出现过，0代表单词没有出现
-    def bernoulli_predict(self, x):
-        n_sample = len(x)
-        n_feature = len(self.data[0])
-        pre = np.zeros(n_sample, dtype=int)
-        for a in range(n_sample):
-            dict_ = collections.Counter(x[a])
-            for k in self.dict_.keys():
-                self.dict_[k]['phi'] = []
-                self.dict_[k]['n_xi'] = []
-                for kx, vx in dict_.items():
-                    phi = 1
-                    for i in self.dict_[k]['index']:
-                        phi *= np.sum(self.data[i] == kx) / n_feature
-                    self.dict_[k]['phi'].append(phi)
-                    self.dict_[k]['n_xi'].append(vx)
-                pxy = 1
-                for i, j in zip(self.dict_[k]['phi'], self.dict_[k]['n_xi']):
-                    pxy *= np.power(i, j)
-                self.dict_[k]['pyx'] = pxy * self.dict_[k]['py']
-            max = -1
-            for k in self.dict_.keys():
-                b = self.dict_[k]['pyx']
-                if b > max:
-                    max = b
-                    max_k = k
-            pre[a] = max_k
-        return pre
 
-    def show(self):
-        fig1, ax = plt.subplots()
-        fig2, _ = plt.subplots()
-        ax2 = Axes3D(fig2)
+class Bernoulli(Multinomial):
+    def get_pxy(self, k, i, kx, ny):
+        nxy = np.sum(self.dic[k]['x'][:, i] == 1)
+        p = (nxy + self.alpha) / (ny + 2 * self.alpha)
+        return np.log(p * kx + (1 - p) * (1 - kx))
 
-        for k in self.dict_.keys():
-            x = np.arange(self.dict_[k]['mu'][0] - 3, self.dict_[k]['mu'][0] + 3, 0.1)
-            y = np.arange(self.dict_[k]['mu'][1] - 3, self.dict_[k]['mu'][1] + 3, 0.1)
-            x, y = np.meshgrid(x, y)
-            d = np.linalg.det(self.dict_[k]['sigma'])
-            z = np.exp(
-                -0.5 * ((x - self.dict_[k]['mu'][0]) ** 2 + (y - self.dict_[k]['mu'][1]) ** 2) / d ** 2) / np.sqrt(
-                2 * np.pi * d)
-            # 等高线
-            # 二维高斯函数的切面是一个椭圆
-            # todo： 二维高斯函数的切面方程：
-            cs = ax.contour(x, y, z)
-            ax.clabel(cs, inline=1, fontsize=10)
-            ax2.plot_surface(x, y, z, rstride=1, cstride=1, cmap='rainbow')
 
-        # draw interface
-        x_min, x_max = self.data[:, 0].min() - 1, self.data[:, 0].max() + 1
-        y_min, y_max = self.data[:, 1].min() - 1, self.data[:, 1].max() + 1
-        x = np.arange(x_min, x_max, 0.1)
-        y = np.arange(y_min, y_max, 0.1)
-        x, y = np.meshgrid(x, y)
-        z = self.gaussian_predict(np.c_[x.ravel(), y.ravel()])
-        z = z.reshape(x.shape)
-        # todo: 分界面呈弧形
-        cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF', '#AAAAAA'])
-        ax.pcolormesh(x, y, z, cmap=cmap_light)
-        ax.scatter(self.data[:, 0], self.data[:, 1], c=self.label)
-        ax2.set_xlabel('x')
-        ax2.set_ylabel('y')
-        ax2.set_zlabel('z')
-        # fig1.savefig('../img/gaussian_predict2D.png')
-        # fig2.savefig('../img/gaussian_predict3D.png')
-        plt.show()
+def gaussian_test():
+    """高斯预测"""
+    x, y = datasets.make_blobs(centers=3, n_samples=200)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+
+    model = Gaussian(x.shape[1], show_img=True)
+    model.fit(x_train, y_train)
+
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 1.0"""
+
+
+def real_data_gaussian_test():
+    dataset = datasets.load_breast_cancer()
+
+    x, y = dataset.data, dataset.target
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+    model = Gaussian()
+    model.fit(x_train, y_train)
+
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 0.9385964912280702"""
+
+
+def sklearn_gaussian_test():
+    from sklearn.naive_bayes import GaussianNB
+
+    dataset = datasets.load_breast_cancer()
+
+    x, y = dataset.data, dataset.target
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+    model = GaussianNB()
+    model.fit(x_train, y_train)
+
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 0.9385964912280702"""
+
+
+def multinomial_test():
+    """多项式预测"""
+    x, y = datasets.make_blobs(centers=3, n_samples=200)
+    x_train, x_test, y_train, y_test = train_test_split(x.astype(int), y.astype(int), test_size=0.2)
+
+    model = Multinomial(x.shape[1], show_img=True)
+    model.fit(x_train, y_train)
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 1.0"""
+
+
+def real_data_multinomial_test():
+    dataset = datasets.load_digits()
+
+    x, y = dataset.data, dataset.target
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+    model = Multinomial()
+    model.fit(x_train, y_train)
+
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 0.9111111111111111"""
+
+
+def sklearn_multinomial_test():
+    from sklearn.naive_bayes import MultinomialNB
+    dataset = datasets.load_digits()
+
+    x, y = dataset.data, dataset.target
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+
+    model = MultinomialNB()
+    model.fit(x_train, y_train)
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 0.9"""
+
+
+def bernoulli_test():
+    """伯努利判别"""
+    x, y = datasets.make_blobs(centers=3, n_samples=200)
+
+    x_train, x_test, y_train, y_test = train_test_split(np.signbit(x), np.signbit(y), test_size=0.2)
+
+    model = Bernoulli()
+    model.fit(x_train, y_train)
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 1.0"""
+
+
+def real_data_bernoulli_test():
+    dataset = datasets.load_digits()
+
+    x, y = dataset.data, dataset.target
+    x[x > 0] = 1
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+    model = Bernoulli()
+    model.fit(x_train, y_train)
+
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 0.8583333333333333"""
+
+
+def sklearn_bernoulli_test():
+    from sklearn.naive_bayes import BernoulliNB
+    dataset = datasets.load_digits()
+
+    x, y = dataset.data, dataset.target
+    x[x > 0] = 1
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+
+    model = BernoulliNB()
+    model.fit(x_train, y_train)
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 0.8583333333333333"""
 
 
 if __name__ == '__main__':
-    from sklearn import datasets
-    from sklearn.naive_bayes import GaussianNB  # 高斯预测
+    gaussian_test()
+    # real_data_gaussian_test()
+    # sklearn_gaussian_test()
 
-    x, y = datasets.make_blobs(centers=3)
-    model = NB(x, y)
-    pre = model.gaussian_predict_(model.norm(x))
-    acc = np.sum(pre == y)/len(x)
-    print(acc)
-    model.show()
+    # multinomial_test()
+    # real_data_multinomial_test()
+    # sklearn_multinomial_test()
 
-    m = GaussianNB().fit(x, y)
-    pre = m.predict(x)
-    acc = np.sum(pre == y)/len(x)
-    print(acc)
-
-    # # 多项式预测
-    # from sklearn.naive_bayes import MultinomialNB
-    #
-    # x = np.random.randint(5, size=(6, 100))
-    # y = np.array([1, 2, 3, 4, 5, 6])
-    # model = NB(x, y)
-    # pre = model.multinomial_predict(x)
-    # acc = np.sum(pre == y)/len(x)
-    # print(acc)
-    # m = MultinomialNB().fit(x, y)   # label >= 0
-    # pre = m.predict(x)
-    # acc = np.sum(pre == y)/len(x)
-    # print(acc)
-
-    # # 伯努利判别
-    # from sklearn.naive_bayes import BernoulliNB
-    #
-    # x = np.random.randint(2, size=(6, 100))
-    # y = np.array([1, 2, 3, 4, 5, 6])
-    # model = NB(x, y)
-    # pre = model.bernoulli_predict(x)
-    # acc = np.sum(pre == y)/len(x)
-    # print(acc)
-    # m = BernoulliNB().fit(x, y)
-    # pre = m.predict(x)
-    # acc = np.sum(pre == y)/len(x)
-    # print(acc)
+    # bernoulli_test()
+    # real_data_bernoulli_test()
+    # sklearn_bernoulli_test()
