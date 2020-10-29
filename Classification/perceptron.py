@@ -1,32 +1,20 @@
 from utils import *
-from tqdm import tqdm
-
-
-class MyPainter(Painter):
-    def img_collections(self, data, label, w, b):
-        for a, b, i, im in super(MyPainter, self).img_collections(data, label):
-            self.ani_ax[a][b].set_ylim([-20, 10])
-            x = np.array(list(range(4, 12)))
-
-            y = -(w[0, 0] * x + b) / w[0, 1]
-            line, = self.ani_ax[a][b].plot(x, y, c='black', animated=True)
-            im.append(line)
 
 
 class Perceptron:
     def __init__(self, n_features=None, show_img=False):
-        self.w = np.zeros((1, n_features))
-        self.b = .0
         self.show_img = show_img
 
         if self.show_img:
-            self.painter = MyPainter(n_features)
+            self.painter = Painter(n_features)
             self.painter.beautify()
             self.painter.init_ani()
 
     def fit(self, data, label, lr=1e-1, it=100, ani_save_path=None, img_save_path=None, **kwargs):
         data = np.array(data, dtype=float)
-
+        n_features = data.shape[1]
+        self.w = np.zeros((n_features,))
+        self.b = .0
         for _ in tqdm(range(it)):
             for i in range(data.shape[0]):
                 xi, yi = data[i], label[i]
@@ -53,7 +41,7 @@ def simple_test():
     model = Perceptron(x.shape[1], show_img=True)
     model.fit(x_train, y_train,
               # ani_save_path='../img/perception.mp4',
-              img_save_path='../img/perception.png',
+              # img_save_path='../img/perception.png',
               fps=2)
 
     pred = model.predict(x_test)

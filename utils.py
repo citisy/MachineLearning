@@ -4,15 +4,16 @@ from matplotlib.colors import ListedColormap
 import matplotlib.animation as animation
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 np.random.seed(6)
 
 
 class Painter:
+    cmap_light = ListedColormap(['#AAFFAA', '#AAAAFF', '#FFFFAA', '#AAAAAA', '#FFFFFF', '#FFAAAA'])
+
     def __init__(self, n_features):
         self.n_features = n_features
-
-        self.cmap_light = ListedColormap(['#AAFFAA', '#AAAAFF', '#FFFFAA', '#AAAAAA', '#FFFFFF', '#FFAAAA'])
 
         self.col = int(np.ceil(np.sqrt(n_features / 2)))
         self.row = int(np.ceil(n_features / 2 / self.col))
@@ -52,13 +53,28 @@ class Painter:
         self.ani_fig.set_tight_layout(True)
         self.ims = []
 
-    def img_collections(self, data, label, *args, **kwargs):
+    def img_collections(self, data, label, w, bias, *args, **kwargs):
+        for a, b, i, im in self.draw_ani(data, label, w, bias, *args, **kwargs):
+            pass
+
+    def draw_ani(self, data, label, w, bias, *args, **kwargs):
         im = []
         for i in range(self.n_features // 2):
             a = i // self.col
             b = i % self.col
             yield a, b, i, im
 
+            x_min, x_max = data[:, i].min() - 1, data[:, i].max() + 1
+            y_min, y_max = data[:, i + 1].min() - 1, data[:, i + 1].max() + 1
+
+            self.ani_ax[a][b].set_xlim(x_min, x_max)
+            self.ani_ax[a][b].set_ylim(y_min, y_max)
+
+            xx = np.arange(x_min, x_max)
+            y = -(w[0] * xx + bias) / w[1]
+
+            line, = self.ani_ax[a][b].plot(xx, y, c='black', animated=True)
+            im.append(line)
             im.append(self.ani_ax[a][b].scatter(data[:, i], data[:, i + 1], c=label, animated=True))
 
         self.ims.append(im)
