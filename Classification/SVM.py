@@ -1,26 +1,41 @@
-import numpy as np
-import math
-import time
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-import seaborn as sns
+from utils import *
 
-sns.set(style="white", palette="muted", color_codes=True)
-
-svc = 0
-_1vr = 1
-_1v1 = 2
-
-liner = 0
+linear = 0
 rbf = 1
 polynomial = 2
 
 
+class MyPainter(Painter):
+    def img_collections(self, data, label, w, bias, *args, **kwargs):
+        for a, b, i, im in self.draw_ani(data, label, w, bias, *args, **kwargs):
+            x_min, x_max = data[:, i].min() - 1, data[:, i].max() + 1
+            xx = np.arange(x_min, x_max)
+
+            y1 = -(w[0] * xx + bias + 1) / w[1]
+            y2 = -(w[0] * xx + bias - 1) / w[1]
+
+            line2, = self.ani_ax[a][b].plot(xx, y1, c='b')
+            line3, = self.ani_ax[a][b].plot(xx, y2, c='b')
+            im.append(line2)
+            im.append(line3)
+
+
 class SVM(object):
-    def __init__(self, data, label, c=1.0, tol=1e-3, max_iter=10, kernel=liner, method=svc, draw=False,
-                 gamma=None, r=None, d=None):
+    def __init__(self, kernel=linear, k_args=None, n_features=None, show_img=False):
+        self.kernel = kernel
+        self.k_args = k_args
+        self.show_img = show_img
+
+        if self.show_img:
+            self.painter = MyPainter(n_features)
+            self.painter.beautify()
+            self.painter.init_ani()
+
+    def fit(self, data, label, c=1.0, tol=1e-3, max_iter=10, img_save_path=None, ani_save_path=None):
         """
         Parameters:
+            data:
+                [n_samples, n_features]
             label:
                 -1 or +1
             c:
@@ -29,229 +44,78 @@ class SVM(object):
                 容忍极限值
             max_iter:
                 最大迭代次数
-            kernel:
-                liner -> x * x'
-                rbf -> exp(-gamma(||x - x'||^2))
-                polynomial -> gamma(x * x' + r)^d
-            method:
-                0 -> normal classification
-                1 -> 1vr classification
-                2 -> 1v1 classification
         """
-        self.data = np.array(data)
-        self.label = np.array(label)
-        self.c = c
-        self.tol = tol
-        self.max_iter = max_iter
-        self.kernel = kernel
-        self.draw = draw
-        self.gamma = gamma or 0.1
-        self.r = r or 1
-        self.d = d or 2
-        self.n_sample = self.data.shape[0]
-        self.n_features = self.data.shape[1]
-        self._class = np.unique(self.label)
-        self.n_class = len(self._class)
+        data = np.array(data, dtype=float)
+        label = np.array(label)
 
-        self.pole = []
-        for i in range(self.n_features):
-            self.pole.append(max(abs(self.data[:, i].min()), abs(self.data[:, i].max())))
-        self.data = self.norm(self.data)
+        n_samples = data.shape[0]
+        self.a = np.zeros(n_samples)
+        self.b = .0
+        ecache = np.zeros(n_samples, dtype=int) - 1
 
-        if self.draw:
-            self.ims = []
-            self.col = math.ceil(np.sqrt(self.n_features / 2))
-            self.row = math.ceil(self.n_features / 2 / self.col)
-            self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
-            self.ax[0][0].set_ylim(self.label.min() * 1.2, self.label.max() * 1.2)
-            self.fig.set_tight_layout(True)
+        for i in range(n_samples):
+            ecache[i] = self.getE(i, data, label)
 
-    def norm(self, data):
-        """
-        before norm:
-        >> data
-        >>[[-3.62194721 -5.49173113]
-         [-3.23435367 -4.67226512]
-         [-1.58990744 -9.87007247]
-         [ 1.95358937 -1.92006285]
-         [ 2.68055418 -1.53837307]]
-        after norm
-        >>data
-        >>[[-0.83333333 -0.46366859]
-         [-0.74415627 -0.39448082]
-         [-0.36580402 -0.83333333]
-         [ 0.44947953 -0.16211151]
-         [ 0.61673874 -0.12988532]]
-        all data will fall between [-1, 1]
-        """
-        for i in range(self.n_features):
-            data[:, i] /= self.pole[i] * 1.2
+        for _ in tqdm(range(max_iter)):
+            for i in range(n_samples):
+                ei = self.getE(i, data, label)
 
-        return data
-
-    def train(self):
-        n = self.n_sample
-        pre = np.zeros(self.n_sample)
-        itera = 0
-        while itera < self.max_iter:
-            a_change = 0  # a改变的次数
-            for i in range(n):
-                ei = self.getE(i)
                 # 满足kkt -> 已经得到最优解，不需要进行操作
                 # 不满足kkt条件 -> 还没得到最优解，进行优化
-                if not self.is_kkt(ei, i):
-                    # 确定aj
-                    j, ej = self.getj(i, ei)
-                    # 确定上下界
-                    l, h = self.getLH(i, j)
+                if not self.is_kkt(label[i], ei, self.a[i], tol, c):
+                    j, ej = self.getj(ei, ecache, data, label)  # 确定aj
+
+                    while j == i:   # 如果取的是同一个点，则随机挑选一个点
+                        j = np.random.randint(n_samples)
+                        ej = self.getE(j, data, label)
+
+                    l, h = self.getLH(i, j, label, c)  # 确定上下界
+
                     # l等于h时，a的值在l或h上
                     # 即|aj-ai|=c
                     if l == h:
                         continue
-                    # 确定eta
-                    eta = self.getEta(i, j)
+
+                    eta = self.getEta(data[i], data[j])  # 确定eta
+
                     #  如果eta等于0或者小于0 则表明a最优值应该在L或者H上
-                    ai_old = self.__a[i]
-                    aj_old = self.__a[j]
-                    # 更新aj
-                    self.__a[j] += self.__label[j] * (ei - ej) / eta
-                    if np.abs(self.__a[j] - aj_old) <= 1e-4:
+                    ai_old = self.a[i]
+                    aj_old = self.a[j]
+
+                    self.a[j] += label[j] * (ei - ej) / eta  # 更新aj
+
+                    if np.abs(self.a[j] - aj_old) <= 1e-4:
                         continue
+
                     # 下界是L 也就是截距,小于L时为L
                     # 上界是H 也就是最大值,大于H时为H
                     # L <= aj <= H
-                    self.__a[j] = min(self.__a[j], h)
-                    self.__a[j] = max(self.__a[j], l)
-                    self.__a[i] += self.__label[i] * self.__label[j] * (aj_old - self.__a[j])
+                    self.a[j] = min(self.a[j], h)
+                    self.a[j] = max(self.a[j], l)
+                    self.a[i] += label[i] * label[j] * (aj_old - self.a[j])
+
                     # j是随机挑选的情况
-                    if 0 < self.__a[i] < self.c:
-                        self.__ecache[i] = i
-                    if 0 < self.__a[j] < self.c:
-                        self.__ecache[j] = j
+                    if 0 < self.a[i] < c:
+                        ecache[i] = ei
+                    if 0 < self.a[j] < c:
+                        ecache[j] = ej
 
-                    # 更新b
-                    self.__b = self.getb(i, j, ei, ej, ai_old, aj_old)
-                    a_change += 1
-            if a_change == 0:
-                itera += 1
-            else:
-                itera = 0
-            self.__w = self.getW()
-            for i in range(self.n_sample):
-                pre[i] = self.predict(i, self.__w)
-            if self.draw:
-                self.show(self.__data, pre, [self.__w], [self.__b])
+                    self.b = self.getb(i, j, ei, ej, ai_old, aj_old, c, data, label)  # 更新b
 
-    def svc(self):
-        stime = time.time()
-        self.__b = 0
-        self.__w = np.zeros(self.n_features)
-        self.__a = np.zeros(self.n_sample)  # 拉格朗日乘子
-        self.__ecache = np.zeros(self.n_sample, dtype=int) - 1
-        self.__data = self.data.copy()
-        self.__label = self.label.copy()
-        self.__label[np.where(self.__label == self._class[0])] = -1
-        self.__label[np.where(self.__label != -1)] = 1
-        self.train()
-        etime = time.time()
-        print('train completed! time: %s' % str(etime - stime))
-        if self.draw:
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=3000 / len(self.ims), blit=True,
-                                            repeat_delay=0, repeat=True)
-            # ani.save('../img/SVM_svc.gif', writer='imagemagick')
-            plt.show()
+                    if self.show_img:
+                        w = self.getW(data, label)
+                        self.painter.img_collections(data, label, w, self.b)
 
-    def _1vr(self):
-        """
-        1对多：
-            开销少，但有时候分类效果不太好
-            例如，3个位于同一平行线上的类，中间的那个类分类效果就不好
-        :return:
-        """
-        stime = time.time()
+        self.data = data
+        self.label = label
 
-        self.b = np.zeros(self.n_class)
-        self.w = np.zeros((self.n_class, self.n_features))
-        self.a = np.zeros((self.n_class, self.n_sample))  # 拉格朗日乘子
-        self.ecache = np.zeros((self.n_class, self.n_sample), dtype=int) - 1
-        self.label_cache = np.zeros((self.n_class, self.n_sample))
-        self.__data = self.data.copy()
-        for i in range(self.n_class):
-            self.__b = 0
-            self.__w = np.zeros(self.n_features)
-            self.__a = np.zeros(self.n_sample)  # 拉格朗日乘子
-            self.__ecache = np.zeros(self.n_sample, dtype=int) - 1
-            self.__label = self.label.copy()
-            self.__label[np.where(self.__label == self._class[i])] = -1
-            self.__label[np.where(self.__label != -1)] = 1
-            self.train()
-            self.b[i] = self.__b
-            self.w[i] = self.__w
-            self.a[i] = self.__a
-            self.ecache[i] = self.__ecache
-            self.label_cache[i] = self.__label
-
-        etime = time.time()
-        print('train completed! time: %s' % str(etime - stime))
-
-        if self.draw:
-            pre = self.predict_1vr(self.data)
-
-            for _ in range(len(self.ims)):
-                self.show(self.data, pre, self.w, self.b, 0)
-
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=3000 / len(self.ims), blit=True,
-                                            repeat_delay=0, repeat=True)
-            # ani.save('../img/SVM_1vr.gif', writer='imagemagick')
-            plt.show()
-
-    def _1v1(self):
-        stime = time.time()
-
-        self.b = []
-        self.w = []
-        self.a = []  # 拉格朗日乘子
-        self.ecache = []
-        self.label_cache = []
-        self.data_cache = []
-        a = 0
-        for i in range(self.n_class):
-            for j in range(i + 1, self.n_class):
-                zeros = np.where(self.label == self._class[i])
-                ones = np.where(self.label == self._class[j])
-                self.__label = self.label[np.concatenate(zeros + ones)]
-                self.__data = self.data[np.concatenate(zeros + ones)]
-                self.__label[np.where(self.__label == self._class[i])] = -1
-                self.__label[np.where(self.__label != -1)] = 1
-                self.n_sample = len(self.__label)
-                self.__b = 0
-                self.__w = np.zeros(self.n_features)
-                self.__a = np.zeros(self.n_sample)  # 拉格朗日乘子
-                self.__ecache = np.zeros(self.n_sample, dtype=int) - 1
-                self.train()
-                self.b.append(self.__b)
-                self.w.append(self.__w)
-                self.a.append(self.__a)
-                self.ecache.append(self.__ecache)
-                self.label_cache.append(self.__label)
-                self.data_cache.append(self.__data)
-            a += 1
-
-        etime = time.time()
-        print('train completed! time: %s' % str(etime - stime))
-        if self.draw:
-            pre = self.predict_1v1(self.data)
-
-            for _ in range(len(self.ims)):
-                self.show(self.data, pre, self.w, self.b, 0)
-
-            ani = animation.ArtistAnimation(self.fig, self.ims, interval=3000 / len(self.ims), blit=True,
-                                            repeat_delay=0, repeat=True)
-            # ani.save('../img/SVM_1v1.gif', writer='imagemagick')
-            plt.show()
+        if self.show_img:
+            self.painter.show_ani(ani_save_path)
+            self.painter.show_pic(data, label, self.predict, img_save_path)
+            self.painter.show()
 
     # 判断是否符合kkt条件
-    def is_kkt(self, e, i):
+    def is_kkt(self, yi, ei, ai, tol, c):
         """
         满足kkt的条件：（0 <= alpha <= c）
             yi*ui >= 1 and alpha == 0 (正确分类)
@@ -267,40 +131,44 @@ class SVM(object):
             满足 -> True
             不满足 -> False
         """
-        if self.__label[i] * e < -self.tol and self.__a[i] < self.c:
+        if yi * ei < tol and ai < c:
             return False
-        if self.__label[i] * e > self.tol and self.__a[i] > 0:
+        if yi * ei > tol and ai > 0:
             return False
-        self.__ecache[i] = -1
         return True
 
-    def __kernel(self, i, j):
-        if self.kernel == liner:
-            return np.matmul(self.__data[i], self.__data[j].T)
+    def K(self, xi, xj):
+        """核函数
+        liner -> x * x'
+        rbf -> exp(-gamma(||x - x'||^2))
+        polynomial -> gamma(x * x' + r)^d
+        """
+        if self.kernel == linear:
+            return np.matmul(xi, xj.T)
         if self.kernel == rbf:
-            return np.exp(-self.gamma * np.linalg.norm(self.__data[i] - self.__data[j]))
+            gamma = self.k_args[0]
+            return np.exp(-gamma * np.linalg.norm(xi - xj))
         if self.kernel == polynomial:
-            return self.gamma(np.matmul(self.__data, self.__data[j].T) + self.r) ^ self.d
+            gamma, r, d = self.k_args[0:3]
+            return gamma(np.matmul(xi, xj.T) + r) ^ d
 
-    def getE(self, i):
-        """
-        Ei = ui - yi
-        """
-        u = self.getu(i)
-        return u - self.__label[i]
+    def getE(self, i, data, label):
+        """Ei = ui - yi"""
+        return self.getu(data[i], data, label) - label[i]
 
     # 目标值
-    def getu(self, i, w=None):
+    def getu(self, xi, data, label):
         """
         ui -> pre
             ui = w *　xi * k + b
         """
-        if w is None:
-            w = self.getW()
-        u = np.dot(w, self.__data[i]) + self.__b
-        return u
+        n_samples = data.shape[0]
+        u = 0
+        for j in range(n_samples):
+            u += self.a[j] * label[j] * self.K(data[j], xi)
+        return u + self.b
 
-    def getW(self):
+    def getW(self, data, label):
         """
         w: 平面的法向量
         二维为例：
@@ -309,12 +177,9 @@ class SVM(object):
             平面(二维为直线)簇方程：g(x) = w * x + b -> w1x1 + w2x2 + b
             中心直线方程：g(x) = 0
         """
-        w = 0
-        for i in range(self.n_sample):
-            w += self.__a[i] * self.__label[i] * self.__data[i]
-        return w
+        return data.T @ (label * self.a)
 
-    def getj(self, i, ei):
+    def getj(self, ei, ecache, data, label):
         """
         启发式遍历：
             对于上一次不满足kkt的点，下一次很大概率也不满足。
@@ -324,163 +189,103 @@ class SVM(object):
         return:
             [j, ej]
         """
-        self.__ecache[i] = i
-        max_e = 0
-        j = 0
-        ej = 0
-        flag = 0
-        for a in self.__ecache:
-            if a != -1 and a != i:
-                flag = 1
-                ea = self.getE(a)
-                delta_e = np.abs(ea - ei)
-                if delta_e > max_e:
-                    max_e = delta_e
-                    j = a
-                    ej = ea
-        # 没有适合的j，随机选取一个
-        if not flag:
-            j = np.random.randint(self.n_sample)
-            while j == i:
-                j = np.random.randint(self.n_sample)
-            ej = self.getE(j)
+        if ei < 0:
+            j = np.argmax(ecache)
+        else:
+            j = np.argmin(ecache)
+        ej = self.getE(j, data, label)
+
         return j, ej
 
-    def getLH(self, i, j):
-        if self.__label[i] == self.__label[j]:
-            l = max(0.0, self.__a[j] + self.__a[i] - self.c)
-            h = min(self.c, self.__a[j] + self.__a[i])
+    def getLH(self, i, j, label, c):
+        if label[i] == label[j]:
+            l = max(0.0, self.a[j] + self.a[i] - c)
+            h = min(c, self.a[j] + self.a[i])
         else:
-            l = max(0.0, self.__a[j] - self.__a[i])
-            h = min(self.c, self.c + self.__a[j] - self.__a[i])
+            l = max(0.0, self.a[j] - self.a[i])
+            h = min(c, c + self.a[j] - self.a[i])
         return l, h
 
-    def getEta(self, i, j):
-        """
-
-        """
-        eta = self.__kernel(i, i) + self.__kernel(j, j) - 2 * self.__kernel(i, j)
+    def getEta(self, xi, xj):
+        """eta = Kii + Kjj - 2Kij"""
+        eta = self.K(xi, xi) + self.K(xj, xj) - 2 * self.K(xi, xj)
         return eta
 
-    def getb(self, i, j, ei, ej, ai_old, aj_old):
-        b1 = (self.__b - ei - self.__label[i] * (self.__a[i] - ai_old) * self.__kernel(i, i)
-              - self.__label[j] * (self.__a[j] - aj_old) * self.__kernel(i, j))
-        b2 = (self.__b - ej - self.__label[i] * (self.__a[i] - ai_old) * self.__kernel(i, j)
-              - self.__label[j] * (self.__a[j] - aj_old) * self.__kernel(j, j))
-        if 0 < self.__a[i] < self.c:
+    def getb(self, i, j, ei, ej, ai_old, aj_old, c, data, label):
+        b1 = (self.b - ei - label[i] * (self.a[i] - ai_old) * self.K(data[i], data[i])
+              - label[j] * (self.a[j] - aj_old) * self.K(data[i], data[j]))
+        b2 = (self.b - ej - label[i] * (self.a[i] - ai_old) * self.K(data[i], data[j])
+              - label[j] * (self.a[j] - aj_old) * self.K(data[j], data[j]))
+
+        if 0 < self.a[i] < c:
             return b1
-        if 0 < self.__a[j] < self.c:
+        if 0 < self.a[j] < c:
             return b2
-        # 貌似到不了这一步，至少一定存在0<aj<c
+
         return (b1 + b2) / 2
 
-    def predict(self, i, w=None):
-        pre = self.getu(i, w)
-        if pre < 0:
-            # if pre > -1:
-            if self.__a[i] != 0:
-                return -2
-            return -1
-        else:
-            # if pre < 1:
-            if self.__a[i] != 0:
-                return 2
-            return 1
+    def predict(self, x):
+        x = np.array(x, dtype=float)
+        n_test = x.shape[0]
 
-    def predict_1vr(self, data):
-        data = np.array(data)
-        n_sample = data.shape[0]
-        pre = np.zeros(n_sample)
-        for i in range(n_sample):  # predict
-            p = []
-            for j in range(self.n_class):
-                b = self.b[j]
-                w = self.w[j]
-                u = np.dot(w, data[i]) + b
-                p.append(u)
-            # 判断依据：1对多中的‘1’被划分为‘-1’类，故其判断值小于0，故选择预测值最小为预测的类
-            pre[i] = self._class[np.argmin(p)]
+        pre = np.zeros(n_test, dtype=int)
+
+        for i in tqdm(range(n_test)):
+            u = self.getu(x[i], self.data, self.label)
+            pre[i] = -1 if u < 0 else 1
+
         return pre
 
-    def predict_1v1(self, data):
-        data = np.array(data)
-        n_sample = data.shape[0]
-        k = self.n_class * (self.n_class - 1) // 2
-        pre = np.zeros(n_sample)
-        for i in range(n_sample):
-            p = np.zeros(self.n_class, dtype=int)
-            for j in range(k):
-                b = self.b[j]
-                w = self.w[j]
-                x = 0
-                a = self.n_class - 1
-                while j - a >= 0:
-                    j = j - a
-                    a -= 1
-                    x += 1
-                u = np.dot(w, data[i]) + b
-                if u > 0:
-                    p[x + j + 1] += 1
-                else:
-                    p[x] += 1
-            pre[i] = self._class[np.argmax(p)]
-        return pre
 
-    def show(self, data, pre, w, b, draw_support_line=1):
-        im = []
-        ax = self.ax[0][0]
-        ax.set_xlim(
-            [-1.2, 1.2])  # data will be normalized between [-1, 1], so set the axis between [-1.2, 1.2] is enough
-        ax.set_ylim([-1.2, 1.2])
-        x = np.linspace(-1, 1)
-        sca = ax.scatter(data[:, 0], data[:, 1], c=pre)
-        im.append(sca)
-        for i in range(len(w)):
-            # draw line base on w, b, base line function: y = -(w1*x+b)/w2
-            y = -(w[i][0] * x + b[i]) / w[i][1]
-            line1, = ax.plot(x, y, c='r')
-            im.append(line1)
-            if draw_support_line:
-                y1 = -(w[i][0] * x + b[i] + 1) / w[i][1]
-                y2 = -(w[i][0] * x + b[i] - 1) / w[i][1]
-                line2, = ax.plot(x, y1, c='b')
-                line3, = ax.plot(x, y2, c='b')
-                im.append(line2)
-                im.append(line3)
-        self.ims.append(im)
+def sample_test():
+    x, y = datasets.make_blobs(centers=2, n_samples=200)
+    y[y == 0] -= 1
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+
+    model = SVM(n_features=x.shape[1], show_img=True)
+    model.fit(x_train, y_train,
+              img_save_path='../img/SVM.png',
+              ani_save_path='../img/SVM.mp4',
+              )
+
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 1.0"""
 
 
-def sklearn_pre(x, y):
-    from sklearn import svm
+def real_data_test():
+    dataset = datasets.load_breast_cancer()
 
-    clf = svm.SVC(kernel='linear')
-    clf.fit(x, y)
-    w = clf.coef_[0]
-    k = -w[0] / w[1]
-    b = clf.intercept_[0]
-    pre = clf.support_
-    y[pre] = -2
-    xx = np.linspace(-1, 1)
-    yy = k * xx - b / w[1]
-    yy1 = k * xx - (b + 1) / w[1]
-    yy2 = k * xx - (b - 1) / w[1]
-    plt.figure()
-    ax = plt.gca()
-    ax.set_xlim([-1.2, 1.2])
-    ax.set_ylim([-1.2, 1.2])
-    ax.scatter(x[:, 0], x[:, 1], c=y)
-    ax.plot(xx, yy)
-    ax.plot(xx, yy1)
-    ax.plot(xx, yy2)
-    plt.show()
+    x, y = dataset.data, dataset.target
+
+    y[y == 0] -= 1
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+    model = SVM()
+    model.fit(x_train, y_train)
+
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 0.49122807017543857"""
+    # 非线性输入，所以输出准确率很低
+
+
+def sklearn_test():
+    from sklearn.svm import LinearSVC
+
+    dataset = datasets.load_breast_cancer()
+
+    x, y = dataset.data, dataset.target
+    y[y == 0] -= 1
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+    model = LinearSVC()
+    model.fit(x_train, y_train)
+
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 0.7105263157894737"""
 
 
 if __name__ == '__main__':
-    from sklearn import datasets
-
-    x, y = datasets.make_blobs(centers=3, random_state=23)
-    model = SVM(x, y, c=0.5, draw=True, kernel=liner)
-    # model.svc()
-    # model._1vr()
-    model._1v1()
-    # sklearn_pre(model.data, model.label)
+    sample_test()
+    # real_data_test()
+    # sklearn_test()

@@ -176,6 +176,23 @@ def real_data_test():
     """acc: 0.956140350877193"""
 
 
+def sklearn_test():
+    from sklearn.neighbors import KNeighborsClassifier
+
+    dataset = datasets.load_breast_cancer()
+
+    x, y = dataset.data, dataset.target
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+    model = KNeighborsClassifier()
+    model.fit(x_train, y_train)
+
+    pred = model.predict(x_test)
+    print('acc:', np.sum(y_test == pred) / len(y_test))
+    """acc: 0.9385964912280702"""
+
+
 if __name__ == '__main__':
-    simple_test()
+    # simple_test()
     # real_data_test()
+    sklearn_test()

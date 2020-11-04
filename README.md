@@ -22,7 +22,7 @@
 | :-----------------------------------------------: | :-----------------------------------------------: |
 | ![gaussian_predict2D](img/gaussian_predict2D.png) | ![gaussian_predict3D](img/gaussian_predict3D.png) |
 
-## 分类算法-决策树
+## [分类算法-决策树](http://www.citisy.site/posts/46656.html)
 
 [DecisionTree.py](Classification/DecisionTree.py)
 
@@ -30,19 +30,21 @@
 | :-----------------------: | :-----------------------: | :-------------------------: |
 | ![DT_id3](img/DT_id3.png) | ![DT_c45](img/DT_c45.png) | ![DT_cart](img/DT_cart.png) |
 
-## 分类算法-Logistic回归
+## [分类算法-Logistic回归](http://www.citisy.site/posts/33772.html)
 
 [LogisticRegression.py](Classification/LogisticRegression.py)
 
 <img src="img/LogisticRegression.png" width="400"></img>
 
-## 分类算法-SVM
+## [分类算法-SVM](http://www.citisy.site/posts/40930.html)
 
 [SVM.py](Classification/SVM.py)
 
-|           SVM_svc           |           SVM_1v1           |           SVM_1vr           |
-| :-------------------------: | :-------------------------: | :-------------------------: |
-| ![SVM_svc](img/SVM_svc.gif) | ![SVM_1v1](img/SVM_1v1.gif) | ![SVM_1vr](img/SVM_1vr.gif) |
+<video src="img/SVM.mp4" controls="controls" style="max-width: 100%; display: block; margin-left: auto; margin-right: auto;"> your browser does not support the video tag </video>
+
+
+
+![SVM](img/SVM.png)
 
 # Regression
 
