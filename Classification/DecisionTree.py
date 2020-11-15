@@ -66,6 +66,7 @@ class DT:
         self.show_img = show_img
         if self.show_img:
             self.painter = Painter(n_feature)
+            self.painter.init_pic()
 
     def pruning(self, tree, a=0):
         """todo: 剪枝算法"""

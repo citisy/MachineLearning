@@ -4,13 +4,19 @@ from utils import *
 class Logistic:
     """only apply for 2 classes classification."""
 
-    def __init__(self, n_features=None, show_img=False):
+    def __init__(self, n_features=None, show_img=False, show_ani=False, painter=None):
         self.show_img = show_img
+        self.show_ani = show_ani
 
-        if self.show_img:
-            self.painter = Painter(n_features)
+        if self.show_img or self.show_ani:
+            self.painter = painter or Painter(n_features)
             self.painter.beautify()
-            self.painter.init_ani()
+
+            if not painter and self.show_img:
+                self.painter.init_pic()
+
+            if not painter and self.show_ani:
+                self.painter.init_ani()
 
     def fit(self, data, label, img_save_path=None, ani_save_path=None, lr=1e-2, itera=10, batch=10):
         data = np.array(data, dtype=float)
@@ -33,11 +39,13 @@ class Logistic:
 
                 self.w -= lr * d / batch
 
-                if self.show_img:
+                if self.show_ani:
                     self.painter.img_collections(data[:, 1:], label, self.w[1:], self.w[0])
 
-        if self.show_img:
+        if self.show_ani:
             self.painter.show_ani(ani_save_path)
+
+        if self.show_img:
             self.painter.show_pic(data[:, 1:], label, self.predict, img_save_path)
             self.painter.show()
 
@@ -57,7 +65,7 @@ def sample_test():
     x, y = datasets.make_blobs(centers=2, n_samples=200)
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
 
-    model = Logistic(x.shape[1], show_img=True)
+    model = Logistic(x.shape[1], show_img=True, show_ani=True)
     model.fit(x_train, y_train,
               # img_save_path='../img/LogisticRegression.png',
               # ani_save_path='../img/LogisticRegression.mp4',

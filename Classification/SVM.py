@@ -21,15 +21,22 @@ class MyPainter(Painter):
 
 
 class SVM(object):
-    def __init__(self, kernel=linear, k_args=None, n_features=None, show_img=False):
+    def __init__(self, kernel=linear, k_args=None, n_features=None,
+                 show_img=False, show_ani=False, painter=None):
         self.kernel = kernel
         self.k_args = k_args
         self.show_img = show_img
+        self.show_ani = show_ani
 
-        if self.show_img:
-            self.painter = MyPainter(n_features)
+        if self.show_img or self.show_ani:
+            self.painter = painter or MyPainter(n_features)
             self.painter.beautify()
-            self.painter.init_ani()
+
+            if not painter and self.show_img:
+                self.painter.init_pic()
+
+            if not painter and self.show_ani:
+                self.painter.init_ani()
 
     def fit(self, data, label, c=1.0, tol=1e-3, max_iter=10, img_save_path=None, ani_save_path=None):
         """
@@ -46,17 +53,16 @@ class SVM(object):
                 最大迭代次数
         """
         data = np.array(data, dtype=float)
-        label = np.array(label)
+        label = np.array(label, dtype=float)
 
         n_samples = data.shape[0]
         self.a = np.zeros(n_samples)
         self.b = .0
-        ecache = np.zeros(n_samples, dtype=int) - 1
-
-        for i in range(n_samples):
-            ecache[i] = self.getE(i, data, label)
+        ecache = np.zeros_like(label)
 
         for _ in tqdm(range(max_iter)):
+            change = False
+
             for i in range(n_samples):
                 ei = self.getE(i, data, label)
 
@@ -65,7 +71,7 @@ class SVM(object):
                 if not self.is_kkt(label[i], ei, self.a[i], tol, c):
                     j, ej = self.getj(ei, ecache, data, label)  # 确定aj
 
-                    while j == i:   # 如果取的是同一个点，则随机挑选一个点
+                    while j == i:  # 如果取的是同一个点，则随机挑选一个点
                         j = np.random.randint(n_samples)
                         ej = self.getE(j, data, label)
 
@@ -84,9 +90,6 @@ class SVM(object):
 
                     self.a[j] += label[j] * (ei - ej) / eta  # 更新aj
 
-                    if np.abs(self.a[j] - aj_old) <= 1e-4:
-                        continue
-
                     # 下界是L 也就是截距,小于L时为L
                     # 上界是H 也就是最大值,大于H时为H
                     # L <= aj <= H
@@ -94,23 +97,38 @@ class SVM(object):
                     self.a[j] = max(self.a[j], l)
                     self.a[i] += label[i] * label[j] * (aj_old - self.a[j])
 
-                    # j是随机挑选的情况
-                    if 0 < self.a[i] < c:
+                    if np.abs(self.a[j] - aj_old) <= 1e-4:  # 改变量过少，则认为参数未改变
+                        continue
+
+                    # 只缓存分类正确的向量
+                    # 如果本次优化分类仍不正确，下次优化很可能继续选到该点继续进行优化
+                    # 为了节省时间，这里不用再次计算ei和ej，因为这里只是大概地暂存一下
+                    # 而且每遍历完一次样本集，都会重新更新一次缓存库
+                    if self.is_kkt(label[i], ei, self.a[i], tol, c):
                         ecache[i] = ei
-                    if 0 < self.a[j] < c:
+                    if self.is_kkt(label[j], ej, self.a[j], tol, c):
                         ecache[j] = ej
 
                     self.b = self.getb(i, j, ei, ej, ai_old, aj_old, c, data, label)  # 更新b
 
-                    if self.show_img:
-                        w = self.getW(data, label)
-                        self.painter.img_collections(data, label, w, self.b)
+                    change = True
 
-        self.data = data
-        self.label = label
+                    if self.show_ani:
+                        self.w = self.getW(data, label)
+                        self.painter.img_collections(data, label, self.w, self.b)
+
+            if not change:  # 如果参数都没发生改变，说明迭代已经结束
+                break
+
+            for i in range(n_samples):  # 每次迭代更新后更新一次缓存表
+                ecache[i] = self.getE(i, data, label)
+
+        self.w = self.getW(data, label)
+
+        if self.show_ani:
+            self.painter.show_ani(ani_save_path)
 
         if self.show_img:
-            self.painter.show_ani(ani_save_path)
             self.painter.show_pic(data, label, self.predict, img_save_path)
             self.painter.show()
 
@@ -193,6 +211,7 @@ class SVM(object):
             j = np.argmax(ecache)
         else:
             j = np.argmin(ecache)
+
         ej = self.getE(j, data, label)
 
         return j, ej
@@ -225,32 +244,23 @@ class SVM(object):
         return (b1 + b2) / 2
 
     def predict(self, x):
-        x = np.array(x, dtype=float)
-        n_test = x.shape[0]
-
-        pre = np.zeros(n_test, dtype=int)
-
-        for i in tqdm(range(n_test)):
-            u = self.getu(x[i], self.data, self.label)
-            pre[i] = -1 if u < 0 else 1
-
-        return pre
+        return np.int_(np.sign(self.w @ x.T + self.b).reshape(-1))
 
 
 def sample_test():
     x, y = datasets.make_blobs(centers=2, n_samples=200)
-    y[y == 0] -= 1
+    y[y == 0] = -1
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
 
-    model = SVM(n_features=x.shape[1], show_img=True)
+    model = SVM(n_features=x.shape[1], show_img=True, show_ani=True)
     model.fit(x_train, y_train,
-              img_save_path='../img/SVM.png',
-              ani_save_path='../img/SVM.mp4',
+              # img_save_path='../img/SVM.png',
+              # ani_save_path='../img/SVM.mp4',
               )
 
     pred = model.predict(x_test)
     print('acc:', np.sum(y_test == pred) / len(y_test))
-    """acc: 1.0"""
+    """acc: 0.975"""
 
 
 def real_data_test():
@@ -258,15 +268,16 @@ def real_data_test():
 
     x, y = dataset.data, dataset.target
 
-    y[y == 0] -= 1
+    x, _, _ = Normalization().min_max(x)
+    y[y == 0] = -1
+
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
     model = SVM()
     model.fit(x_train, y_train)
 
     pred = model.predict(x_test)
     print('acc:', np.sum(y_test == pred) / len(y_test))
-    """acc: 0.49122807017543857"""
-    # 非线性输入，所以输出准确率很低
+    """acc: 0.9736842105263158"""
 
 
 def sklearn_test():
@@ -275,7 +286,7 @@ def sklearn_test():
     dataset = datasets.load_breast_cancer()
 
     x, y = dataset.data, dataset.target
-    y[y == 0] -= 1
+    y[y == 0] = -1
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
     model = LinearSVC()
     model.fit(x_train, y_train)

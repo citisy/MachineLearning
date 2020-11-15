@@ -12,15 +12,19 @@ class MyPainter(Painter):
 
 
 class Linear(object):
-    def __init__(self, n_features=None, show_img=False, fit_method='ne'):
+    def __init__(self, n_features=None, show_img=False, show_ani=False, painter=None, fit_method='ne'):
         self.show_img = show_img
         self.fit_method = fit_method
+        self.show_ani = show_ani
 
-        if self.show_img:
-            self.painter = MyPainter(n_features)
+        if self.show_img or self.show_ani:
+            self.painter = painter or MyPainter(n_features)
             self.painter.beautify()
 
-            if self.fit_method == 'gd':
+            if not painter and self.show_img:
+                self.painter.init_pic()
+
+            if not painter and self.show_ani and self.fit_method == 'gd':
                 self.painter.init_ani()
 
     def fit(self, data, label, img_save_path=None, ani_save_path=None, lr=1e-2, itera=10, **kwargs):
@@ -33,10 +37,10 @@ class Linear(object):
         else:
             self.normal_equations(data, label)
 
-        if self.show_img:
-            if self.fit_method == 'gd':
-                self.painter.show_ani(ani_save_path)
+        if self.show_ani and self.fit_method == 'gd':
+            self.painter.show_ani(ani_save_path)
 
+        if self.show_img:
             self.painter.show_pic(data, label, self.w, self.predict, img_save_path, **kwargs)
             self.painter.show()
 
@@ -46,7 +50,7 @@ class Linear(object):
         self.w = (np.mean(label) / np.mean(data, axis=0)).T
 
         for _ in tqdm(range(itera)):
-            if self.show_img:
+            if self.show_ani:
                 self.painter.img_collections(data[:, 1:], label, self.w[1:], self.w[0])
 
             self.w += lr * (data.T @ (label - data @ self.w))

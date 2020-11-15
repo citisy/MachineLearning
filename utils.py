@@ -14,14 +14,15 @@ class Painter:
 
     def __init__(self, n_features):
         self.n_features = n_features
-
-        self.col = int(np.ceil(np.sqrt(n_features / 2)))
-        self.row = int(np.ceil(n_features / 2 / self.col))
-        self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
+        self.col = int(np.ceil(np.sqrt(self.n_features / 2)))
+        self.row = int(np.ceil(self.n_features / 2 / self.col))
 
     def beautify(self):
         import seaborn as sns
         sns.set(style="white", palette="muted", color_codes=True)
+
+    def init_pic(self):
+        self.fig, self.ax = plt.subplots(ncols=self.col, nrows=self.row, squeeze=False)
 
     def draw_pic(self, data, label, predict, img_save_path=None, *args, **kwargs):
         for i in range(0, self.n_features, 2):

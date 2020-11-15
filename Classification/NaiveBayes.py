@@ -41,6 +41,7 @@ class NB(object):
         self.show_img = show_img
         if self.show_img:
             self.painter = MyPainter(n_feature)
+            self.painter.init_pic()
 
     def fit(self, data, label):
         data = np.array(data, dtype=float)

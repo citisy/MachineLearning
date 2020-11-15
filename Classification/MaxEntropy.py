@@ -9,6 +9,7 @@ class MaxEnt:
         if self.show_img:
             self.painter = Painter(n_features)
             self.painter.beautify()
+            self.painter.init_pic()
 
     def fit(self, data, label, itera=10):
         data = np.array(data, dtype=float)

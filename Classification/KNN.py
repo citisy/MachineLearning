@@ -10,6 +10,7 @@ class KNN:
         if self.show_img:
             self.painter = Painter(n_features)
             self.painter.beautify()
+            self.painter.init_pic()
 
     def fit(self, data, label, k=10, **kwargs):
         """knn是lazy learning，基本不学习，网络结构很简单，所以该方法只是简单保存传进来参数，并没有任何运算
@@ -193,6 +194,6 @@ def sklearn_test():
 
 
 if __name__ == '__main__':
-    # simple_test()
+    simple_test()
     # real_data_test()
-    sklearn_test()
+    # sklearn_test()
