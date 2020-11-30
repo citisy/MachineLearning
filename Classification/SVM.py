@@ -264,11 +264,12 @@ def sample_test():
 
 
 def real_data_test():
+    from MathMethods.Scaler import scaler
     dataset = datasets.load_breast_cancer()
 
     x, y = dataset.data, dataset.target
 
-    x, _, _ = Normalization().min_max(x)
+    x, _, _ = scaler.min_max(x)
     y[y == 0] = -1
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)

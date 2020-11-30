@@ -149,7 +149,7 @@ class KdTree(KNN):
         return pre
 
 
-def simple_test():
+def sample_test():
     x, y = datasets.make_blobs(centers=5, n_samples=200)
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
 
@@ -194,6 +194,6 @@ def sklearn_test():
 
 
 if __name__ == '__main__':
-    simple_test()
+    sample_test()
     # real_data_test()
     # sklearn_test()

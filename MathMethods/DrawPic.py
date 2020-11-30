@@ -195,14 +195,14 @@ def show_optimizer():
     zz = fx(xx, yy)
 
     fig0 = plt.figure()
-    fig0.set_size_inches(20, 10)
+    fig0.set_size_inches(10, 5)
     ax0 = fig0.add_subplot(121)
-    ax0.contour(xx, yy, zz, cmap='Greys')
+    ax0.contourf(xx, yy, zz, cmap='Blues')
 
     ax0.set_ylim(area)
     ax0.set_xlim(area)
-    ax0.set_xlabel('theta_1')
-    ax0.set_ylabel('theta_2')
+    ax0.set_xlabel('$\\theta_1$')
+    ax0.set_ylabel('$\\theta_2$')
 
     ax1 = fig0.add_subplot(122, projection='3d')
     ax1.plot_surface(xx, yy, zz, linewidth=0, cmap='rainbow')
@@ -210,9 +210,9 @@ def show_optimizer():
     ax1.set_ylim(area)
     ax1.set_xlim(area)
     ax1.set_zlim([-15, 15])
-    ax1.set_xlabel('theta_1')
-    ax1.set_ylabel('theta_2')
-    ax1.set_zlabel('J(x)')
+    ax1.set_xlabel('$\\theta_1$')
+    ax1.set_ylabel('$\\theta_2$')
+    ax1.set_zlabel('$J(\\theta)$')
 
     itera = 1000
     start = (-4, -.1)
@@ -262,13 +262,13 @@ def show_optimizer():
 
         pz = fx(px, py)
         ax = fig.add_subplot(121)
-        ax.contour(xx, yy, zz, levels=10, cmap='Blues')
-        ax.plot(px, py, color='b')
+        ax.contourf(xx, yy, zz, levels=10, cmap='Blues')
+        ax.plot(px, py, color='r')
         ax.set_ylim(area)
         ax.set_xlim(area)
         ax.set_title(name)
-        ax.set_xlabel('theta_1')
-        ax.set_ylabel('theta_2')
+        ax.set_xlabel('$\\theta_1$')
+        ax.set_ylabel('$\\theta_2$')
 
         ax = fig.add_subplot(122, projection='3d')
         ax.plot_surface(xx, yy, zz, cmap='rainbow', linewidth=0)
@@ -277,9 +277,9 @@ def show_optimizer():
         ax.set_ylim(area)
         ax.set_xlim(area)
         ax.set_zlim([-15, 15])
-        ax.set_xlabel('theta_1')
-        ax.set_ylabel('theta_2')
-        ax.set_zlabel('J(theta)')
+        ax.set_xlabel('$\\theta_1$')
+        ax.set_ylabel('$\\theta_2$')
+        ax.set_zlabel('$J(\\theta)$')
 
         ax0.plot(px, py, label=name)
         ax1.plot(px, py, pz, label=name)
@@ -293,8 +293,38 @@ def show_optimizer():
     fig0.savefig('../img/MathMethods/optimizer.png')
 
 
+def show_regularization():
+    def lp(x1, x2, p):
+        return (np.abs(x1) ** p + np.abs(x2) ** p) ** (1 / p)
+
+    area = (-10, 10)
+    x, y = np.linspace(*area, 100), np.linspace(*area, 100)
+
+    xx, yy = np.meshgrid(x, y)
+
+    fig = plt.figure()
+    fig.set_size_inches(16, 8)
+
+    for i in range(4):
+        p = 0.5 * 2 ** i
+        zz = lp(xx, yy, p)
+
+        ax = fig.add_subplot(241 + i)
+        ax.contour(xx, yy, zz, cmap='Blues')
+        ax.set_axis_off()
+        ax.set_title('p=%s' % p)
+
+        ax = fig.add_subplot(245 + i, projection='3d')
+        ax.plot_surface(xx, yy, zz, cmap='rainbow', linewidth=0)
+        ax.set_axis_off()
+
+    fig.savefig('../img/MathMethods/Regularization2.png')
+    plt.show()
+
+
 if __name__ == '__main__':
     # show_scaler()
     # show_activation()
     # show_loss()
-    show_optimizer()
+    # show_optimizer()
+    show_regularization()

@@ -5,119 +5,131 @@
 　　(4) 更新簇的平均值，即计算每个簇中对象的平均值；
 　　(5) until不再发生变化。
 """
-from cluster import *
+from utils import *
 
 
-class Kmeans(cluster):
-    def norm(self):
-        self.cent = np.zeros((self.k, self.n_features))  # 中心点集
+class MyPainter(Painter4cluster):
+    def img_collections(self, data, label, centers=None, *args, **kwargs):
+        for a, b, i, im in self.draw_ani(data, label, *args, **kwargs):
+            im.append(self.ani_ax[a][b].scatter(centers[:, i], centers[:, i + 1], c='green',
+                                                marker='*', s=100, animated=True))
 
-        for i in range(self.n_features):
-            amax = self.data[:, i].max()
-            amin = self.data[:, i].min()
+    def show_pic(self, data, label, centers=None, img_save_path=None, *args, **kwargs):
+        for a, b, i in self.draw_pic(data, label, img_save_path, *args, **kwargs):
+            self.ax[a][b].scatter(centers[:, i], centers[:, i + 1], c='green', marker='*', s=100)
 
-            # 数据归一化
-            self.data[:, i] /= amax
 
-            # 随机生成中心点落在数据中
-            self.cent[:, i] = np.random.random(self.k) * (amax - amin) / amax + amin / amax
+class Kmeans:
+    def __init__(self, n_clusters, n_features=None, show_img=None, show_ani=None, painter=None):
+        self.n_clusters = n_clusters
+
+        self.show_img = show_img
+        self.show_ani = show_ani
+
+        if self.show_img or self.show_ani:
+            self.painter = painter or MyPainter(n_features)
+            self.painter.beautify()
+
+            if not painter and self.show_img:
+                self.painter.init_pic()
+
+            if not painter and self.show_ani:
+                self.painter.init_ani()
 
     # 模型训练
-    @count_time
-    def train(self, **kwargs):
-        for _ in range(kwargs.get('itera') or 100):
-            self.cent_cn = np.zeros(self.k, dtype=int)  # 每个簇包含点的数量
-            for a in range(self.n_samples):
-                r = []
+    def fit_predict(self, data, itera=100, img_save_path=None, ani_save_path=None):
+        n_samples = data.shape[0]
+        n_features = data.shape[1]
 
-                # 求每个点与每个中心点的距离
-                for b in range(self.k):
-                    r.append(self.get_r(self.data[a], self.cent[b]))
+        self.centers = data[np.random.choice(n_samples, self.n_clusters, False)]
 
-                # 离点最近的中心点的下标
-                max_ind = np.argmin(r)
+        for _ in range(itera):
+            pred = self.predict(data)
 
-                # 标记归属簇
-                self.point_index[a] = max_ind
+            new_centers = np.zeros((self.n_clusters, n_features))
 
-                self.cent_cn[max_ind] += 1
-
-            new_cent = np.zeros((self.k, self.n_features))
-
-            # 遍历所有数据，更新中心点位置
-            for a in range(self.n_samples):
-                new_cent[self.point_index[a]] += self.data[a]
-
-            # 如果某一个簇包含0个点，说明这个簇的中心点选择有问题，需要重新选择中心点
-            for a in range(self.k):
-                if self.cent_cn[a] == 0:
-                    new_cent[a] = self.cent[a] + np.random.random(self.n_features) - 0.5
+            for k in range(self.n_clusters):
+                idx = pred == k
+                if np.any(idx):
+                    new_centers[k] = np.mean(data[idx], axis=0)
                 else:
-                    new_cent[a] /= self.cent_cn[a]
+                    new_centers[k] = data[np.random.randint(n_samples)]
 
             # 中心点位置不变，训练完成，退出循环
-            if (self.cent == new_cent).all():
+            if np.mean(np.abs(self.centers - new_centers)) < 1e-4:
                 break
 
-            self.cent = new_cent
+            if self.show_ani:
+                self.painter.img_collections(data, pred, self.centers)
 
-            self.picture_collections(self.data, self.point_index, cent=self.cent)
+            self.centers = new_centers
 
-        self.show_ani(kwargs.get('img_save_path'))
+        if self.show_ani:
+            self.painter.show_ani(ani_save_path, fps=5)
 
-        return self.point_index
+        if self.show_img:
+            self.painter.show_pic(data, self.predict(data), self.centers, img_save_path)
+            self.painter.show()
 
-    def picture_collections(self, data, point_index, **kwargs):
-        if not self.show_img:
-            return
+        return self.predict(data)
 
-        cent = kwargs.get('cent')
-        im = []
-        for i in range(self.n_features // 2):
-            a = i // self.col
-            b = i % self.col
+    def predict(self, x):
+        n_samples = x.shape[0]
+        pred = np.zeros(n_samples, dtype=int)
 
-            # 原数据
-            im.append(self.ax[a][b].scatter(data[:, i], data[:, i + 1], c=point_index, animated=True))
+        for a in range(n_samples):
+            # 求每个点与每个中心点的距离
+            r = count_distances(x[a], self.centers, axis=1)
 
-            # 中心点
-            im.append(self.ax[a][b].scatter(cent[:, i], cent[:, i + 1], c='r', animated=True))
+            # 记录离点最近的中心点的下标
+            pred[a] = np.argmin(r)
 
-        self.ims.append(im)
-
-    def score(self):
-        # Calinski-Harabasz score
-        # 簇间协方差的迹
-        bk = np.trace(np.cov(self.cent, rowvar=False))
-        # 簇内协方差的迹
-        cent_ = []
-        wk = 0
-        for i in range(self.k):
-            for j in range(self.n_samples):
-                if self.point_index[j] == i:
-                    cent_.append(self.data[j])
-            wk += np.trace(np.cov(cent_, rowvar=False))
-        return bk * (self.n_samples - self.k) / (wk * (self.k - 1))
+        return pred
 
 
-def sklearn_kmeans(x, k):
-    from sklearn.cluster import KMeans, MiniBatchKMeans
+def sample_test():
+    np.random.seed(3)
+    n_clusters = 5
+    x, y = datasets.make_blobs(centers=n_clusters, n_samples=200)
 
-    # y_pred = KMeans(n_clusters=k).fit_predict(x)
-    y_pred = MiniBatchKMeans(n_clusters=k, batch_size=200).fit_predict(x)
+    model = Kmeans(n_clusters=n_clusters, n_features=x.shape[1], show_ani=True, show_img=True)
+    pred = model.fit_predict(x,
+                             # img_save_path='../img/Kmeans.png',
+                             # ani_save_path='../img/Kmeans.mp4'
+                             )
 
-    plt.scatter(x[:, 0], x[:, 1], c=y_pred)
-    plt.show()
+    print('ARI:', metrics.adjusted_rand_score(y, pred))
+    """ARI: 0.9749679718552928"""
+
+
+def real_data_test():
+    dataset = datasets.load_wine()
+
+    x, y = dataset.data, dataset.target
+
+    model = Kmeans(n_clusters=3)
+    pred = model.fit_predict(x)
+
+    print('ARI:', metrics.adjusted_rand_score(y, pred))
+    """ARI: 0.37111371823084754"""
+
+
+def sklearn_test():
+    from sklearn.cluster import KMeans
+
+    dataset = datasets.load_wine()
+
+    x, y = dataset.data, dataset.target
+
+    model = KMeans(n_clusters=3)
+    model.fit(x)
+    pred = model.predict(x)
+
+    print('ARI:', metrics.adjusted_rand_score(y, pred))
+    """ARI: 0.37111371823084754"""
 
 
 if __name__ == '__main__':
-    from sklearn.datasets import make_blobs as make_data
-
-    np.random.seed(6)
-    k = 3
-    x, _ = make_data(n_samples=500, n_features=2, centers=k)
-
-    model = Kmeans(x, k, show_img=True)
-    model.train()
-    # model.train(img_save_path='../img/kmeans.gif')
-    # print(model.score())
+    sample_test()
+    # real_data_test()
+    # sklearn_test()

@@ -4,7 +4,9 @@ from matplotlib.colors import ListedColormap
 import matplotlib.animation as animation
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
+from sklearn import metrics
 from tqdm import tqdm
+import time
 
 np.random.seed(6)
 
@@ -94,3 +96,58 @@ class Painter:
 
     def show(self):
         plt.show()
+
+
+class Painter4cluster(Painter):
+    def img_collections(self, data, label, *args, **kwargs):
+        for a, b, i, im in self.draw_ani(data, label, *args, **kwargs):
+            pass
+
+    def draw_ani(self, data, label, *args, **kwargs):
+        im = []
+        for i in range(self.n_features // 2):
+            a = i // self.col
+            b = i % self.col
+            im.append(self.ani_ax[a][b].scatter(data[:, i], data[:, i + 1], c=label, animated=True))
+
+            yield a, b, i, im
+
+        self.ims.append(im)
+
+    def draw_pic(self, data, label, img_save_path=None, *args, **kwargs):
+        for i in range(0, self.n_features, 2):
+            a = i // self.col
+            b = i % self.col
+            self.ax[a][b].scatter(data[:, i], data[:, i + 1], c=label)
+            yield a, b, i
+
+        if img_save_path:
+            self.fig.savefig(img_save_path)
+
+    def show_pic(self, data, label, img_save_path=None, *args, **kwargs):
+        for a, b, i in self.draw_pic(data, label, img_save_path, *args, **kwargs):
+            pass
+
+
+def count_distances(x1, x2, method='euc', axis=None):
+    # 欧氏距离
+    if method == 'euc':
+        return (np.sum((x1 - x2) ** 2, axis=axis)) ** 0.5
+    # 余弦相似度
+    elif method == 'cos':
+        return -np.dot(x1, x2) / np.sqrt((x1 ** 2).sum() * (x2 ** 2).sum())
+
+
+def count_time(output='train complete!'):
+    def wrap(train_func):
+        def wrap2(*args, **kwargs):
+            st = time.time()
+            r = train_func(*args, **kwargs)
+            et = time.time()
+            t = et - st
+            print(f'{output} time: {t}')
+            return r
+
+        return wrap2
+
+    return wrap
