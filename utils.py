@@ -135,7 +135,7 @@ def count_distances(x1, x2, method='euc', axis=None):
         return (np.sum((x1 - x2) ** 2, axis=axis)) ** 0.5
     # 余弦相似度
     elif method == 'cos':
-        return -np.dot(x1, x2) / np.sqrt((x1 ** 2).sum() * (x2 ** 2).sum())
+        return np.dot(x1, x2) / np.sqrt((x1 ** 2).sum() * (x2 ** 2).sum())
 
 
 def count_time(output='train complete!'):

@@ -1,45 +1,33 @@
-"""
-　(1) 设定扫描半径 Eps, 并规定扫描半径内的密度值。若当前点的半径范围内密度大于等于设定密度值，则设置当前点为核心点；若某点刚好在某核心点的半径边缘上，则设定此点为边界点；若某点既不是核心点又不是边界点，则此点为噪声点。
-　(2) 删除噪声点。
-　(3) 将距离在扫描半径内的所有核心点赋予边进行连通。
-　(4) 每组连通的核心点标记为一个簇。
-　(5) 将所有边界点指定到与之对应的核心点的簇总。
-"""
-
-from cluster import *
+from utils import *
 
 
-class DBSCAN(cluster):
-    def __init__(self, data, show_img=False, eps=0.01, threshold=3):
+class DBSCAN:
+    """
+    　(1) 设定扫描半径 Eps, 并规定扫描半径内的密度值。若当前点的半径范围内密度大于等于设定密度值，则设置当前点为核心点；若某点刚好在某核心点的半径边缘上，则设定此点为边界点；若某点既不是核心点又不是边界点，则此点为噪声点。
+    　(2) 删除噪声点。
+    　(3) 将距离在扫描半径内的所有核心点赋予边进行连通。
+    　(4) 每组连通的核心点标记为一个簇。
+    　(5) 将所有边界点指定到与之对应的核心点的簇总。
+    """
+
+    def __init__(self, eps=None, min_samples=5, n_features=None, show_img=None, show_ani=None, painter=None):
         self.eps = eps
-        self.threshold = threshold
-        super(DBSCAN, self).__init__(data, show_img=show_img)
+        self.min_samples = min_samples
 
-    def norm(self):
-        """
-        before norm:
-        >> data
-        >>[[-3.62194721 -5.49173113]
-         [-3.23435367 -4.67226512]
-         [-1.58990744 -9.87007247]
-         [ 1.95358937 -1.92006285]
-         [ 2.68055418 -1.53837307]]
-        after norm
-        >>data
-        >>[[-0.83333333 -0.46366859]
-         [-0.74415627 -0.39448082]
-         [-0.36580402 -0.83333333]
-         [ 0.44947953 -0.16211151]
-         [ 0.61673874 -0.12988532]]
-        all data will fall between [-1, 1]
-        """
-        for i in range(self.n_features):
-            amax = abs(self.data[:, i].max())
-            amin = abs(self.data[:, i].min())
-            self.data[:, i] /= max(amax, amin) * 1.2
+        self.show_img = show_img
+        self.show_ani = show_ani
 
-    @count_time
-    def train(self, **kwargs):
+        if self.show_img or self.show_ani:
+            self.painter = painter or Painter4cluster(n_features)
+            self.painter.beautify()
+
+            if not painter and self.show_img:
+                self.painter.init_pic()
+
+            if not painter and self.show_ani:
+                self.painter.init_ani()
+
+    def fit_predict(self, data, img_save_path=None, ani_save_path=None):
         """
         eg:
             index: list type
@@ -50,119 +38,139 @@ class DBSCAN(cluster):
              there is 2 class according to the list of distances,
              0,1,2 is in a class and 3,4,5 is in another class,
              we know that, the list of distances is symmetry,
-             u can only use half of list distances
-             for changing the code by yourselves, it's very easy(smile).
         """
-        distances = [[10 for _ in range(self.n_samples)] for __ in range(self.n_samples)]
-        group_list = [{i} for i in range(self.n_samples)]
+        n_samples = data.shape[0]
+        n_features = data.shape[1]
 
-        self.cent_cn = np.zeros(self.n_samples, dtype=int)
-        point_index = [[] for _ in range(self.n_samples)]
-        for i in range(self.n_samples):
-            for j in range(i + 1, self.n_samples):
-                r = self.get_r(self.data[i], self.data[j])
-                distances[i][j] = r
+        pred = np.arange(n_samples, dtype=int)
+
+        point_index = [[] for _ in range(n_samples)]
+
+        if self.eps is None:
+            self.eps = self.detect_eps(data)
+
+        for i in range(n_samples):
+            for j in range(i + 1, n_samples):
+                r = count_distances(data[i], data[j])
                 if r <= self.eps:
-                    self.cent_cn[i] += 1
-                    self.cent_cn[j] += 1
                     point_index[i].append(j)
+                    point_index[j].append(i)
 
-        # core point
-        core_point = []
-        for i in range(self.n_samples):
-            if self.cent_cn[i] >= self.threshold:
-                core_point.append(i)
+        # core point or border point
+        points = set()
+        for i in range(n_samples):
+            if len(point_index[i]) >= self.min_samples:
+                points.add(i)
 
+                # core point范围内的点归为同一个簇
+                # border point也会在这个时候被优化
                 for j in point_index[i]:
-                    x = y = -1
-                    for k in range(len(group_list)):  # find data[i] and data[j] in eps
-                        if i in group_list[k]:
-                            x = k
-                        if j in group_list[k]:
-                            y = k
-
-                    if all([x == y, x != -1, y != -1]):  # x and y in the same class
+                    if pred[i] == pred[j]:
                         continue
 
-                    group_list[x] |= group_list[y]
-                    for k in group_list[x]:
-                        self.point_index[k] = i  # we label the class with data[i]'s index
+                    points.add(j)
+                    ind_j = np.where(pred == pred[j])
+                    pred[ind_j] = pred[i]
 
-                    # update distances mapping
-                    for k in range(len(distances)):
-                        if x == k:
-                            continue
-                        distances[x][k] = min(distances[x][k], distances[y][k])
-
-                    for k in range(len(distances)):
-                        del distances[k][y]
-
-                    del distances[y]
-                    del group_list[y]
-
-                    self.picture_collections(self.data, self.point_index)
-
-        # border point
-        for i in range(self.n_samples):
-            if 0 < self.cent_cn[i] < self.threshold:
-                x = -1
-                for k in range(len(group_list)):
-                    if i in group_list[k]:
-                        x = k
-
-                if x != -1 and len(group_list[x]) > 1:  # it is core point class
-                    continue
-
-                argsort = np.argsort(distances[x])  # sort by distances to other class
-                j = 0
-                while j < len(group_list):
-                    y = argsort[j]
-                    if len(group_list[y]) > 1:  # find the core point class
-                        group_list[x] |= group_list[y]
-                        for k in group_list[x]:
-                            self.point_index[k] = i
-
-                        for k in range(len(distances)):
-                            distances[x][k] = min(distances[x][k], distances[y][k])
-
-                        for k in range(len(distances)):
-                            del distances[k][y]
-
-                        del distances[y]
-                        del group_list[y]
-                        break
-                    j += 1
-
-        self.picture_collections(self.data, self.point_index)
+                    if self.show_ani:
+                        self.painter.img_collections(data, pred)
 
         # noise point
-        for i in range(self.n_samples):
-            if self.cent_cn[i] == 0:
-                self.point_index[i] = -1
+        for i in range(n_samples):
+            if i not in points:
+                pred[i] = -1
 
-        self.picture_collections(self.data, self.point_index)
+        if self.show_ani:
+            self.painter.img_collections(data, pred)
 
-        self.show_ani(kwargs.get('img_save_path'))
+        # 重新编号
+        idxes = []
+        for k in np.unique(pred):
+            idxes.append((k, pred == k))
 
-        return self.point_index
+        i = 0
+        for k, idx in idxes:
+            if k == -1:
+                pred[idx] = -1
+            else:
+                pred[idx] = i
+                i += 1
+
+        if self.show_ani:
+            self.painter.show_ani(ani_save_path, fps=25)
+
+        if self.show_img:
+            self.painter.show_pic(data, pred, img_save_path)
+            self.painter.show()
+
+        return pred
+
+    def detect_eps(self, data):
+        """根据输入数据猜测可能的eps值"""
+        eps = 0
+        for i in range(data.shape[0]):
+            eps += np.sort(count_distances(data, data[0], axis=1))[self.min_samples * 2] / data.shape[0]
+
+        return eps
 
 
-def sklearn_DBSCAN(x, eps, threshold):
+def sample_test():
+    x, y = datasets.make_moons(n_samples=500, noise=0.08)
+
+    eps = 0
+    min_samples = 5
+    for i in range(x.shape[0]):
+        eps += np.sort(count_distances(x, x[0], axis=1))[min_samples * 2] / x.shape[0]
+
+    model = DBSCAN(eps=eps, min_samples=min_samples,
+                   n_features=x.shape[1], show_ani=True, show_img=True
+                   )
+    pred = model.fit_predict(x,
+                             # img_save_path='../img/DBSCAN.png',
+                             # ani_save_path='../img/DBSCAN.mp4'
+                             )
+
+    print('ARI:', metrics.adjusted_rand_score(y, pred))
+    """ARI: 0.933025120973908"""
+
+
+def real_data_test():
+    dataset = datasets.load_wine()
+
+    x, y = dataset.data, dataset.target
+
+    eps = 0
+    min_samples = 5
+    for i in range(x.shape[0]):
+        eps += np.sort(count_distances(x, x[0], axis=1))[2 * min_samples] / x.shape[0]
+
+    model = DBSCAN(eps=eps, min_samples=min_samples)
+    pred = model.fit_predict(x)
+
+    print('ARI:', metrics.adjusted_rand_score(y, pred))
+    """ARI: 0.23389646019330715"""
+
+
+def sklearn_test():
     from sklearn.cluster import DBSCAN
 
-    y_pred = DBSCAN(eps=eps, min_samples=threshold).fit(x)
+    dataset = datasets.load_wine()
 
-    plt.scatter(x[:, 0], x[:, 1], c=y_pred)
-    plt.show()
+    x, y = dataset.data, dataset.target
+
+    eps = 0
+    min_samples = 5
+    for i in range(x.shape[0]):
+        eps += np.sort(count_distances(x, x[0], axis=1))[2 * min_samples] / x.shape[0]
+
+    model = DBSCAN(eps=eps, min_samples=min_samples)
+    pred = model.fit_predict(x)
+
+    print('ARI:', metrics.adjusted_rand_score(y, pred))
+    """ARI: 0.24121286330731062"""
 
 
 if __name__ == '__main__':
-    from sklearn.datasets import make_moons as make_data
-
-    np.random.seed(6)
-    x, y = make_data(n_samples=500, noise=0.08)
-
-    eps, threshold = 0.01, 3
-    model = DBSCAN(x, show_img=True, eps=eps, threshold=threshold)
-    model.train()
-    # model.train(img_save_path='../img/kmeans.gif')
+    sample_test()
+    # real_data_test()
+    # sklearn_test()

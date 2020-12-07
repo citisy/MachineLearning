@@ -36,12 +36,12 @@ class Scaler:
         data = (data - mu) / std
         return data, (mu, std)
 
-    def vec(self, data):
+    def vec(self, data, axis=None):
         """y = x / ||x||
         after normalization -> fall in the unit circle
         """
         data = np.array(data)
-        data /= np.linalg.norm(data, axis=1).reshape(-1, 1)
+        data /= np.linalg.norm(data, axis=axis, keepdims=True)
         return data
 
     def log(self, data, ma=None):

@@ -1,103 +1,107 @@
-# Classification
+# Machine Learning
 
-## [分类算法-感知机](http://www.citisy.site/posts/49759.html)
+机器学习的python手写版实现
 
-[perceptron.py](Classification/perceptron.py)
+# 个人笔记
 
-<video src="img/perception.mp4" controls="controls" style="max-width: 100%; display: block; margin-left: auto; margin-right: auto;"> your browser does not support the video tag </video>
+## Classification
 
-![perception](img/perception.png)
+[分类算法-感知机](http://www.citisy.site/posts/49759.html)
 
-## [分类算法-k近邻](http://www.citisy.site/posts/34112.html)
+[分类算法-k近邻](http://www.citisy.site/posts/34112.html)
 
-[KNN.py](Classification/KNN.py)
+[分类算法-朴素贝叶斯](http://www.citisy.site/posts/11301.html)
 
-<img src="img/KNN.png" width="400"></img>
+[分类算法-决策树](http://www.citisy.site/posts/46656.html)
 
-## [分类算法-朴素贝叶斯](http://www.citisy.site/posts/11301.html)
+[分类算法-Logistic回归](http://www.citisy.site/posts/33772.html)
 
-[NaiveBayes.py](Classification/NaiveBayes.py)
+[分类算法-SVM](http://www.citisy.site/posts/40930.html)
 
-|                gaussian_predict2D                 |                gaussian_predict3D                 |
-| :-----------------------------------------------: | :-----------------------------------------------: |
-| ![gaussian_predict2D](img/gaussian_predict2D.png) | ![gaussian_predict3D](img/gaussian_predict3D.png) |
+[分类算法-最大熵模型](http://www.citisy.site/posts/57819.html)
 
-## [分类算法-决策树](http://www.citisy.site/posts/46656.html)
-
-[DecisionTree.py](Classification/DecisionTree.py)
-
-|          DT_id3           |          DT_c45           |           DT_cart           |
-| :-----------------------: | :-----------------------: | :-------------------------: |
-| ![DT_id3](img/DT_id3.png) | ![DT_c45](img/DT_c45.png) | ![DT_cart](img/DT_cart.png) |
-
-## [分类算法-Logistic回归](http://www.citisy.site/posts/33772.html)
-
-[LogisticRegression.py](Classification/LogisticRegression.py)
-
-<img src="img/LogisticRegression.png" width="400"></img>
-
-## [分类算法-SVM](http://www.citisy.site/posts/40930.html)
-
-[SVM.py](Classification/SVM.py)
-
-<video src="img/SVM.mp4" controls="controls" style="max-width: 100%; display: block; margin-left: auto; margin-right: auto;"> your browser does not support the video tag </video>
+[分类算法-集成学习](http://www.citisy.site/posts/60954.html)
 
 
+## Regression
 
-![SVM](img/SVM.png)
+[回归算法-线性回归](http://www.citisy.site/posts/3280.html)
 
-# Regression
+## cluster
 
-## [回归算法-线性回归](http://www.citisy.site/posts/3280.html)
+[聚类算法-kmeans](http://www.citisy.site/posts/54575.html)
 
-[LinerRegression.py](Regression/LinearRegression.py)
+[聚类算法-LVQ](http://www.citisy.site/posts/57282.html)
 
-<video src="img/LinearRegression.mp4" controls="controls" style="max-width: 100%; display: block; margin-left: auto; margin-right: auto;"> your browser does not support the video tag </video>
+[聚类算法-DBSCAN](http://www.citisy.site/posts/36744.html)
 
-![LinearRegression](img/LinearRegression.png)
+[聚类算法-Hierarchical](http://www.citisy.site/posts/52475.html)
 
-# cluster
+[聚类算法-SOM](http://www.citisy.site/posts/16633.html)
 
-## 聚类算法-kmeans
+[聚类算法-谱聚类](http://www.citisy.site/posts/41121.html)
 
-[kmeans.py](cluster/kmeans.py)
+## Decomposition
 
-<img src="img/kmeans.gif" width="400"></img>
+降维算法-SVD
 
-## 聚类算法-DBSCAN
+降维算法-LDA
 
-[DBSCAN.py](cluster/DBSCAN.py)
+降维算法-PCA
 
-<img src="img/DBSCAN.gif" width="400"></img>
+## MathMethod
 
-## 聚类算法-Hierarchical
+[数学工具-特征缩放](http://www.citisy.site/posts/57506.html)
 
-[Hierarchical.py](cluster/Hierarchical.py)
+[数学工具-激活函数](http://www.citisy.site/posts/13963.html)
 
-<img src="img/Hierarchical.gif" width="400"></img>
+[数学工具-损失函数](http://www.citisy.site/posts/55281.html)
 
-## 聚类算法-SOM
+[数学工具-优化算法](http://www.citisy.site/posts/3481.html)
 
-[SOM.py](cluster/SOM.py)
+[数学工具-模型评估指标](http://www.citisy.site/posts/20745.html)
 
-| SOM_after_train | SOM_after_train |
-| :----: | :----: |
-|![SOM_after_train](img/SOM_after_train.gif)|![SOM_before_train](img/SOM_before_train.gif)|
+[数学工具-正则项](http://www.citisy.site/posts/35241.html)
 
-# Dimensionality_reduction
+# 目录结构
 
-## 降维算法-LDA
+```
+./
+├── AI_Overview.xmind
+├── Classification
+│   ├── AdaBoost.py
+│   ├── DecisionTree.py
+│   ├── KNN.py
+│   ├── LogisticRegression.py
+│   ├── MaxEntropy.py
+│   ├── NaiveBayes.py
+│   ├── RandomForest.py
+│   ├── SVM.py
+│   ├── multi_classifier.py
+│   └── perceptron.py
+├── Decomposition
+│   ├── LDA.py
+│   ├── PCA.py
+│   └── SVD.py
+├── LICENSE
+├── MathMethods
+│   ├── Activation.py
+│   ├── DrawPic.py
+│   ├── LossFunction.py
+│   ├── Metrics.py
+│   ├── Optimizer.py
+│   └── Scaler.py
+├── README.md
+├── Regression
+│   └── LinearRegression.py
+├── cluster
+│   ├── DBSCAN.py
+│   ├── Hierarchical.py
+│   ├── LVQ.py
+│   ├── SOM.py
+│   ├── SpectralCluster.py
+│   └── kmeans.py
+├── url
+└── utils.py
+```
 
-[LDA.py](Dimensionality_reduction/LDA.py)
-
-| LDA_before | LDA_after |
-| :----: | :----: |
-|![LDA_before](img/LDA_before.png)|![LDA_after](img/LDA_after.png)|
-
-## 降维算法-PCA
-
-[PCA.py](Dimensionality_reduction/PCA.py)
-
-| PCA_before | PCA_after |
-| :----: | :----: |
-|![PCA_before](img/PCA_before.png)|![PCA_after](img/PCA_after.png)|
