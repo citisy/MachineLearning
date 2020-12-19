@@ -1,54 +1,79 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-# import seaborn as sns
-# sns.set(style="white", palette="muted", color_codes=True)
+from utils import *
 
 
 class LDA:
-    def __init__(self, data, label, k=2, draw=0):
-        self.data = np.array(data, dtype=float)  # data -> [150, 4]
-        self.label = np.array(label)  # label -> [150, 1]
+    def __init__(self, k=2, show_img=False):
         self.k = k
-        self.cl = np.unique(label)  # cl: values -> [0, 1, 2]
 
-    def transform(self):
-        means = np.zeros((len(self.cl), np.shape(self.data)[1]))  # means -> [3, 4]
-        for i, c in enumerate(self.cl):
-            means[i] = np.mean(self.data[self.label == c], axis=0)
-        mean = np.mean(means, axis=0)  # mean -> [3, 1]
-        sw = np.zeros((np.shape(self.data)[1], np.shape(self.data)[1]))  # sw -> [4, 4]
-        sb = np.zeros((np.shape(self.data)[1], np.shape(self.data)[1]))  # sb -> [4, 4]
-        for i, c in enumerate(self.cl):
-            submean = means[i] - mean[i]  # submean -> [1, 4]
-            subx = self.data[self.label == c] - means[i]  # subx -> [?, 4]
-            sb += np.sum(self.label == c) * np.matmul(submean.T, submean)
+        self.show_img = show_img
+
+        if self.show_img:
+            self.painter = Painter4decomposition()
+            self.painter.beautify()
+            self.painter.init_pic()
+
+    def fit_transform(self, x, y=None, img_save_path=None):
+        x = np.array(x)
+        n_features = x.shape[1]
+        cl = np.unique(y)
+
+        means = np.zeros((len(cl), n_features))
+
+        for i, c in enumerate(cl):
+            means[i] = np.mean(x[y == c], axis=0)
+
+        mean = np.mean(means, axis=0)
+
+        sw = np.zeros((n_features, n_features))
+        sb = np.zeros((n_features, n_features))
+
+        for i, c in enumerate(cl):
+            submean = means[i] - mean[i]
+            sb += np.sum(y == c) * np.matmul(submean.T, submean)
+
+            subx = x[y == c] - means[i]
             sw += np.matmul(subx.T, subx)
 
         s = np.matmul(np.linalg.inv(sw), sb)
-        eigen_values, eigen_vectors = np.linalg.eig(s)  # eigen_values -> [4, 1], eigen_vectors -> [4, 4]
+        eigen_values, eigen_vectors = np.linalg.eig(s)
 
-        argmax = np.argsort(eigen_values)[::-1]
+        eigenvectors = eigen_vectors[:, np.argsort(eigen_values)[::-1][:self.k]]
 
-        eigenvectors = eigen_vectors[:, argmax[:self.k]]  # select the first k column from eigen_vectors
-                                                          # eigenvectors -> [4, 2]
+        x_ = np.matmul(x, eigenvectors)
 
-        return np.matmul(self.data, eigenvectors)  # return -> [150, 2]
+        if self.show_img:
+            self.painter.show_pic(x, y, x_, img_save_path)
+            self.painter.show()
+
+        return x_
+
+
+def sample_test():
+    x, y = datasets.make_classification(n_samples=1000, n_features=3, n_redundant=0, n_classes=3,
+                                        n_informative=2, n_clusters_per_class=1, class_sep=0.5)
+
+    model = LDA(show_img=True)
+    x_ = model.fit_transform(x, y,
+                             # img_save_path='../img/LDA.png'
+                             )
+
+
+def sklearn_test():
+    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+    x, y = datasets.make_classification(n_samples=1000, n_features=3, n_redundant=0, n_classes=3,
+                                        n_informative=2, n_clusters_per_class=1, class_sep=0.5)
+
+    model = LinearDiscriminantAnalysis(n_components=2)
+    x_ = model.fit_transform(x, y)
+
+    painter = Painter4decomposition()
+    painter.beautify()
+    painter.init_pic()
+    painter.show_pic(x, y, x_)
+    painter.show()
 
 
 if __name__ == '__main__':
-    from sklearn import datasets
-
-    # x, y = datasets.make_blobs(centers=3, n_features=3, n_samples=500)
-    x, y = datasets.make_s_curve(n_samples=1000)
-
-    # transx = LDA(x, y, draw=1).transform()
-    # fig1, ax1 = plt.subplots()
-    fig2, _ = plt.subplots()
-    ax2 = Axes3D(fig2)
-    # ax1.scatter(transx[:, 0], transx[:, 1], c=y)
-    ax2.scatter(x[:, 0], x[:, 1], x[:, 2], c=y, cmap=plt.cm.Spectral)
-    ax2.view_init(4, -72)
-    # fig1.savefig('../img/LDA_after.png')
-    # fig2.savefig('../img/LDA_before.png')
-    plt.show()
+    sample_test()
+    # sklearn_test()

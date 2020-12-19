@@ -43,11 +43,11 @@
 
 ## Decomposition
 
-降维算法-SVD
+[降维算法-SVD](http://www.citisy.site/posts/8526.html)
 
-降维算法-LDA
+[降维算法-PCA](http://www.citisy.site/posts/18468.html)
 
-降维算法-PCA
+[降维算法-LDA](http://www.citisy.site/posts/29439.html)
 
 ## MathMethod
 

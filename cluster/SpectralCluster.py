@@ -29,11 +29,17 @@ class Spectral:
 
         for i in range(n_samples):
             for j in range(i + 1, n_samples):
-                sim = self.cal_sim(data[i], data[j], gamma)
-                w[i][j] = w[j][i] = sim
+                w[i][j] = w[j][i] = self.cal_sim(data[i], data[j], gamma)
 
         d = np.diag(np.sum(w, axis=-1))  # 度矩阵
         l = d - w  # 拉普拉斯矩阵
+
+        # 拉普拉斯矩阵标准化
+        for i in range(n_samples):
+            for j in range(i, n_samples):
+                l[i, j] /= d[i, i] * d[j, j]
+                l[j, i] = l[i, j]
+
         q, v = np.linalg.eig(l)  # 特征值和特征向量
         vec = v[:, np.argsort(q)[:self.n_clusters]]  # 取前k个特征向量
 
@@ -46,8 +52,8 @@ class Spectral:
         return pred
 
     def cal_sim(self, x1, x2, gamma):
-        # todo: 如果这里加上平方，效果反而变差，暂时不知道是为什么
-        return np.exp(- gamma * np.linalg.norm(x1 - x2))
+        """高斯核"""
+        return np.exp(- gamma * np.linalg.norm(x1 - x2) ** 2)
 
 
 def sample_test():
@@ -78,8 +84,7 @@ def real_data_test():
     pred = model.fit_predict(x)
 
     print('ARI:', metrics.adjusted_rand_score(y, pred))
-    """ARI: 0.0004464508480769135"""
-    # todo: something wrong
+    """ARI: 0.7970657287606968"""
 
 
 def sklearn_test():
@@ -100,6 +105,6 @@ def sklearn_test():
 
 
 if __name__ == '__main__':
-    # sample_test()
-    real_data_test()
+    sample_test()
+    # real_data_test()
     # sklearn_test()

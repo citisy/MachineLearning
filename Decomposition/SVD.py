@@ -1,7 +1,7 @@
 from utils import *
 
 
-class PCA:
+class SVD:
     def __init__(self, k=2, show_img=False):
         self.k = k
 
@@ -13,15 +13,12 @@ class PCA:
             self.painter.init_pic()
 
     def fit_transform(self, x, y=None, img_save_path=None):
+        """x_ = x dot V_k^T"""
         x = np.array(x)
 
-        cov = np.cov(x, rowvar=False)
+        s, v = np.linalg.eig(x.T @ x)
 
-        eigen_values, eigen_vectors = np.linalg.eig(cov)
-
-        eigenvectors = eigen_vectors[:, np.argsort(eigen_values)[::-1][:self.k]]
-
-        x_ = np.matmul(x, eigenvectors)
+        x_ = x @ v[:, np.argsort(s)[::-1][:self.k]]
 
         if self.show_img:
             self.painter.show_pic(x, y, x_, img_save_path)
@@ -32,22 +29,19 @@ class PCA:
 
 def sample_test():
     x, y = datasets.make_s_curve(n_samples=500)
-    # x, y = datasets.make_classification(n_samples=1000, n_features=3, n_redundant=0, n_classes=3,
-    #                                     n_informative=2, n_clusters_per_class=1, class_sep=0.5)
 
-    model = PCA(show_img=True)
+    model = SVD(show_img=True)
     x_ = model.fit_transform(x, y,
-                             # img_save_path='../img/PCA.png',
-                             # img_save_path='../img/PCA2.png'
+                             # img_save_path='../img/SVD.png'
                              )
 
 
 def sklearn_test():
-    from sklearn.decomposition import PCA
+    from sklearn.decomposition import TruncatedSVD
 
     x, y = datasets.make_s_curve(n_samples=500)
 
-    model = PCA()
+    model = TruncatedSVD(n_components=2)
     x_ = model.fit_transform(x)
 
     painter = Painter4decomposition()

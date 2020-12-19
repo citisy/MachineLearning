@@ -2,10 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import matplotlib.animation as animation
+from mpl_toolkits.mplot3d import Axes3D
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from tqdm import tqdm
+
 import time
 
 np.random.seed(6)
@@ -127,6 +129,30 @@ class Painter4cluster(Painter):
     def show_pic(self, data, label, img_save_path=None, *args, **kwargs):
         for a, b, i in self.draw_pic(data, label, img_save_path, *args, **kwargs):
             pass
+
+
+class Painter4decomposition:
+    def beautify(self):
+        import seaborn as sns
+        sns.set(style="dark", palette="muted", color_codes=True)
+
+    def init_pic(self):
+        self.fig = plt.figure()
+        self.fig.set_size_inches(8, 4)
+
+    def show_pic(self, x, y, x_, img_save_path=None, *args, **kwargs):
+        ax = self.fig.add_subplot(121, projection='3d')
+        ax.scatter(x[:, 0], x[:, 1], x[:, 2], c=y, cmap='rainbow')
+        ax.view_init(4, -72)
+
+        ax = self.fig.add_subplot(122)
+        ax.scatter(x_[:, 0], x_[:, 1], c=y, cmap='rainbow')
+
+        if img_save_path:
+            self.fig.savefig(img_save_path)
+
+    def show(self):
+        plt.show()
 
 
 def count_distances(x1, x2, method='euc', axis=None):
