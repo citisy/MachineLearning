@@ -63,6 +63,12 @@
 
 [数学工具-正则项](http://www.citisy.site/posts/35241.html)
 
+## TransferLearning
+
+[迁移学习-TrAdaBoost](https://www.citisy.site/posts/19576.html)
+
+[迁移学习-JDA](https://www.citisy.site/posts/49819.html)
+
 # 目录结构
 
 ```

@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score, roc_curve, auc
 
 
 class TrAdaBoost:
@@ -118,6 +117,8 @@ class TrAdaBoost:
     def calculate_metrics(self, y_true, y_pred):
         """计算模型的评估指标"""
         # 使用ks作为评估指标
+        from sklearn.metrics import roc_curve
+
         fpr, tpr, _ = roc_curve(y_true, y_pred)
         return (tpr - fpr).max()
 
